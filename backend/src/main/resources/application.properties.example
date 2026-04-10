@@ -1,0 +1,44 @@
+# Application
+spring.application.name=ticketingsystem
+server.port=8080
+
+# Database
+spring.datasource.url=jdbc:mysql://localhost:3306
+spring.datasource.username=root
+spring.datasource.password=root
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.sql.init.mode=always
+spring.sql.init.schema-locations=file:../database/schema.sql
+spring.sql.init.data-locations=file:../database/seed.sql
+
+# JPA / Hibernate
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+app.seeder.clear-on-shutdown=true
+#spring.jpa.properties.hibernate.default_schema=TicketingSystem
+#spring.datasource.hikari.connection-init-sql=USE TicketingSystem
+
+# JWT
+jwt.secret=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+jwt.expiration=86400000
+jwt.refresh-expiration=604800000
+
+# Mail
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=your-email@gmail.com
+spring.mail.password=your-app-password
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+spring.mail.from=noreply@ticketingsystem.com
+
+# Swagger
+springdoc.api-docs.path=/api-docs
+springdoc.swagger-ui.path=/swagger-ui.html
+springdoc.swagger-ui.operationsSorter=method
+
+# Logging
+logging.level.com.ticketing=DEBUG
+logging.level.org.springframework.security=DEBUG
