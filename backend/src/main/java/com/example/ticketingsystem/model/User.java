@@ -46,4 +46,8 @@ public class User {
 
     @OneToMany(mappedBy = "assignedAgent")
     private List<Ticket> assignedTickets;
+
+    public String getFullName() {
+        return firstName + " " + lastName;
+    }
 }
