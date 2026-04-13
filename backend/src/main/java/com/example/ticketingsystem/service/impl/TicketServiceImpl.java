@@ -385,6 +385,12 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Ticket getTicketEntityById(Long id) {
+        return findTicketById(id);
+    }
+
     private Ticket findTicketById(Long id) {
         return ticketRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(

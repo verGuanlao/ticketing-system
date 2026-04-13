@@ -65,7 +65,7 @@ public class EntityMapper {
                 .text(message.getText())
                 .timestamp(message.getTimestamp())
                 .ticketId(message.getTicket().getId())
-                .sender(toUserResponse(message.getSender()).getFullName())
+                .sender(toUserResponse(message.getSender()))
                 .build();
     }
 }

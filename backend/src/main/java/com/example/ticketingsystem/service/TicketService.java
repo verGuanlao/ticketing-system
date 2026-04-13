@@ -4,6 +4,7 @@ import com.example.ticketingsystem.dto.request.AssignTicketRequest;
 import com.example.ticketingsystem.dto.request.CreateTicketRequest;
 import com.example.ticketingsystem.dto.request.UpdateTicketRequest;
 import com.example.ticketingsystem.dto.response.TicketResponse;
+import com.example.ticketingsystem.model.Ticket;
 import com.example.ticketingsystem.model.enums.TicketStatus;
 
 import java.util.List;
@@ -23,4 +24,7 @@ public interface TicketService {
     void deleteTicket(Long id, String currentUserEmail);
 
     TicketResponse requestReassignment(Long ticketId, String currentUserEmail);
+
+    // ── Helpers ──────────────────────────────────
+    Ticket getTicketEntityById(Long id);
 }
