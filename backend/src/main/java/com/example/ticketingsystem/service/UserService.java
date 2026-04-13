@@ -1,0 +1,30 @@
+package com.example.ticketingsystem.service;
+
+import com.example.ticketingsystem.dto.response.UserResponse;
+import com.example.ticketingsystem.model.User;
+import com.example.ticketingsystem.model.enums.Role;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface UserService {
+
+    // ── Public-facing query methods ──────────────────────────────────────────
+    UserResponse getUserById(Long id);
+    UserResponse getUserByEmail(String email);
+    List<UserResponse> getAllUsers();
+    List<UserResponse> getUsersByRole(Role role);
+    void deleteUser(Long id, String currentUserEmail);
+    UserResponse getCurrentUser(String email);
+
+    // ── Internal entity-returning helpers (used by other services) ───────────
+    User getUserEntityById(Long id);
+    User getUserEntityByEmail(String email);
+    void validateUserIsAgent(Long userId);
+
+    // ── Agent workload / assignment helpers ──────────────────────────────────
+
+    Optional<User> findBestAvailableAgent();
+    long getActiveTicketCountForAgent(Long agentId);
+    boolean isAgentBelowMaxWorkload(Long agentId);
+}

@@ -1,6 +1,7 @@
 package com.example.ticketingsystem.repository;
 
 import com.example.ticketingsystem.model.User;
+import com.example.ticketingsystem.model.enums.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.Optional;
@@ -10,6 +11,6 @@ import java.util.List;
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
 
-    List<User> findByRole(String role);
+    List<User> findByRole(Role role);
     boolean existsByEmail(String email);
 }

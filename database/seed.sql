@@ -14,11 +14,11 @@ VALUES
 
 ('John', 'Agent', 'john.agent@system.com', 
  '$2a$10$aXgH0RkyK8qIIJwKHUjQ4.uqqfzu3oWJTySmvXB3CVXESBRpgXrXi', 
- 'AGENT', 'ACTIVE'),
+ 'SUPPORT_AGENT', 'ACTIVE'),
 
 ('Sarah', 'Support', 'sarah.s@system.com', 
  '$2a$10$aXgH0RkyK8qIIJwKHUjQ4.uqqfzu3oWJTySmvXB3CVXESBRpgXrXi', 
- 'AGENT', 'ACTIVE'),
+ 'SUPPORT_AGENT', 'ACTIVE'),
 
 ('Alice', 'Client', 'alice@gmail.com', 
  '$2a$10$aXgH0RkyK8qIIJwKHUjQ4.uqqfzu3oWJTySmvXB3CVXESBRpgXrXi', 
@@ -26,4 +26,22 @@ VALUES
 
 ('Bob', 'Customer', 'bob@outlook.com', 
  '$2a$10$aXgH0RkyK8qIIJwKHUjQ4.uqqfzu3oWJTySmvXB3CVXESBRpgXrXi', 
+ 'CLIENT', 'ACTIVE'),
+
+ ('Lili', 'Osborn', 'lili@outlook.com', 
+ '$2a$10$aXgH0RkyK8qIIJwKHUjQ4.uqqfzu3oWJTySmvXB3CVXESBRpgXrXi', 
  'CLIENT', 'ACTIVE');
+
+INSERT IGNORE INTO `categories` (`name`) VALUES
+('Unspecified'),
+('Hardware'),
+('Software'),
+('Network'),
+('Access & Permissions'),
+('Email'),
+('Printer'),
+('Application Support'),
+('Account Management'),
+('Billing & Payments'),
+('Facilities'),
+('General Inquiry');
