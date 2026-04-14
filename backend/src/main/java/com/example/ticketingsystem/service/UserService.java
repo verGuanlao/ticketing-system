@@ -1,5 +1,6 @@
 package com.example.ticketingsystem.service;
 
+import com.example.ticketingsystem.dto.request.CreateUserRequest;
 import com.example.ticketingsystem.dto.response.UserResponse;
 import com.example.ticketingsystem.model.User;
 import com.example.ticketingsystem.model.enums.Role;
@@ -16,6 +17,7 @@ public interface UserService {
     List<UserResponse> getUsersByRole(Role role);
     void deleteUser(Long id, String currentUserEmail);
     UserResponse getCurrentUser(String email);
+    UserResponse createUser(CreateUserRequest createUserRequest);
 
     // ── Internal entity-returning helpers (used by other services) ───────────
     User getUserEntityById(Long id);

@@ -2,11 +2,13 @@ package com.example.ticketingsystem.service.impl;
 
 import com.example.ticketingsystem.component.EntityMapper;
 import com.example.ticketingsystem.component.MessageUtil;
+import com.example.ticketingsystem.dto.request.CreateUserRequest;
 import com.example.ticketingsystem.dto.response.UserResponse;
 import com.example.ticketingsystem.exception.InvalidOperationException;
 import com.example.ticketingsystem.exception.ResourceNotFoundException;
 import com.example.ticketingsystem.model.User;
 import com.example.ticketingsystem.model.enums.Role;
+import com.example.ticketingsystem.model.enums.Status;
 import com.example.ticketingsystem.repository.TicketRepository;
 import com.example.ticketingsystem.repository.UserRepository;
 import com.example.ticketingsystem.service.UserService;
@@ -61,6 +63,20 @@ public class UserServiceImpl implements UserService {
         return userRepository.findByRole(role).stream()
                 .map(EntityMapper::toUserResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public UserResponse createUser(CreateUserRequest createUserRequest) {
+        User newUser = new User();
+        newUser.setEmail(createUserRequest.getEmail());
+        newUser.setPassword(createUserRequest.getPassword());
+        newUser.setFirstName(createUserRequest.getFirstName());
+        newUser.setLastName(createUserRequest.getLastName());
+        newUser.setRole(createUserRequest.getRole());
+        newUser.setStatus(Status.ACTIVE);
+        userRepository.save(newUser);
+        return EntityMapper.toUserResponse(newUser);
     }
 
     @Override
