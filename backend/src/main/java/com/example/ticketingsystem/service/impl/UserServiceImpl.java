@@ -81,6 +81,15 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    public UserResponse changeUserStatus(Long id, Status status) {
+        User user = getUserEntityById(id);
+        user.setStatus(status);
+        userRepository.save(user);
+        return EntityMapper.toUserResponse(user);
+    }
+
+    @Override
+    @Transactional
     public void deleteUser(Long id, String currentUserEmail) {
         User user      = getUserEntityById(id);
         User current   = getUserEntityByEmail(currentUserEmail);

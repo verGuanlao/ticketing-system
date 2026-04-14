@@ -5,6 +5,7 @@ import com.example.ticketingsystem.dto.request.CreateUserRequest;
 import com.example.ticketingsystem.dto.response.ApiResponse;
 import com.example.ticketingsystem.dto.response.UserResponse;
 import com.example.ticketingsystem.model.enums.Role;
+import com.example.ticketingsystem.model.enums.Status;
 import com.example.ticketingsystem.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -70,6 +71,17 @@ public class UserController {
         UserResponse user = userService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(messageUtil.get("success.user.created"), user));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Change user status", description = "Change user status to active or inactive. Admin only.")
+    public ResponseEntity<ApiResponse<UserResponse>> changeUserStatus(
+            @PathVariable Long id,
+            @Valid @RequestParam Status status) {
+        UserResponse user = userService.changeUserStatus(id, status);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(messageUtil.get("success.user.updated"), user));
     }
 
     @DeleteMapping("/{id}")
