@@ -6,8 +6,7 @@ import lombok.Data;
 @Data
 @Builder
 public class AgentPerformanceResponse {
-    private Long agentId;
-    private String agentName;
+    private UserResponse agent;
     private long totalAssigned;
     private long activeTickets;
     private long resolvedTickets;

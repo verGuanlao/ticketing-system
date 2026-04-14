@@ -1,5 +1,6 @@
 package com.example.ticketingsystem.service.impl;
 
+import com.example.ticketingsystem.component.EntityMapper;
 import com.example.ticketingsystem.component.MessageUtil;
 import com.example.ticketingsystem.dto.response.AgentPerformanceResponse;
 import com.example.ticketingsystem.dto.response.ReportResponse;
@@ -115,8 +116,7 @@ public class ReportServiceImpl implements ReportService {
         Double avgHours = avgSeconds.isPresent() ? avgSeconds.getAsDouble() / 3600.0 : null;
 
         return AgentPerformanceResponse.builder()
-                .agentId(agent.getId())
-                .agentName(agent.getFullName())
+                .agent(EntityMapper.toUserResponse(agent))
                 .totalAssigned(total)
                 .activeTickets(active)
                 .resolvedTickets(resolved)
