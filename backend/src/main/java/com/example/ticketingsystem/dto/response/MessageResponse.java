@@ -12,5 +12,5 @@ public class MessageResponse {
     private String text;
     private LocalDateTime timestamp;
     private Long ticketId;
-    private String sender;
+    private UserResponse sender;
 }

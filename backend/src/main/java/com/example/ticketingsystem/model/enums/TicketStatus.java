@@ -1,5 +1,5 @@
 package com.example.ticketingsystem.model.enums;
 
 public enum TicketStatus {
-    OPEN, IN_PROGRESS, RESOLVED, CLOSED
+    PENDING, OPEN, IN_PROGRESS, RESOLVED, CLOSED
 }
