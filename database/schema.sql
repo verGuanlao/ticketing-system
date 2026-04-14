@@ -1,3 +1,13 @@
+<<<<<<< Updated upstream
+=======
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS `TicketingSystem`.`messages`;
+DROP TABLE IF EXISTS `TicketingSystem`.`tickets`;
+DROP TABLE IF EXISTS `TicketingSystem`.`categories`;
+DROP TABLE IF EXISTS `TicketingSystem`.`users`;
+SET FOREIGN_KEY_CHECKS = 1;
+
+>>>>>>> Stashed changes
 -- -----------------------------------------------------
 -- Schema TicketingSystem
 -- -----------------------------------------------------
