@@ -2,22 +2,12 @@ import React from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopNav } from './TopNav';
-import { useAuth } from '../contexts/AuthContext';
 import { UIProvider, useUI } from '../contexts/UIContext';
 import { Toaster } from './ui/sonner';
 import { cn } from '../lib/utils.ts';
 
 const LayoutContent = () => {
-  const { user, isLoading } = useAuth();
   const { sidebarCollapsed } = useUI();
-
-  if (isLoading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50">

@@ -1,173 +1,198 @@
-import React from 'react';
-import { 
-  Ticket, 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle,
-  TrendingUp,
+import React, { useEffect, useState } from 'react';
+import {
+  PauseCircle,
+  Ticket,
+  PlayCircle,
+  CheckCircle,
+  XCircle,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
 } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  AreaChart,
-  Area
-} from 'recharts';
+import { cn, TicketStatus } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MOCK_TICKETS, MOCK_USERS } from '@/mockData';
-import { useAuth } from '@/contexts/AuthContext';
-import { cn, formatDate } from '@/lib/utils';
-
-const data = [
-  { name: 'Mon', tickets: 12 },
-  { name: 'Tue', tickets: 19 },
-  { name: 'Wed', tickets: 15 },
-  { name: 'Thu', tickets: 22 },
-  { name: 'Fri', tickets: 30 },
-  { name: 'Sat', tickets: 10 },
-  { name: 'Sun', tickets: 8 },
-];
+import { Badge } from '@/components/ui/badge';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+import { getOverallReport, ReportResponse } from '@/lib/utils';
+import { getTicketsByStatus, getAllTickets, TicketResponse } from '@/lib/utils';
+import { formatDate } from '@/lib/utils'; // Assuming this helper exists
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const [report, setReport] = useState<ReportResponse | null>(null);
+  const [pendingTickets, setPendingTickets] = useState<TicketResponse[]>([]);
+  const [chartData, setChartData] = useState<{ name: string; tickets: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchDashboardData() {
+      setLoading(true);
+      try {
+        const [reportRes, pendingRes, allTicketsRes] = await Promise.all([
+          getOverallReport(),
+          getTicketsByStatus(TicketStatus.PENDING),
+          getAllTickets(),
+        ]);
+
+        if (reportRes.success) setReport(reportRes.data);
+        if (pendingRes.success) setPendingTickets(pendingRes.data.slice(0, 5));
+
+        // Calculate volume for the chart
+        if (allTicketsRes.success) {
+          const volume = calculateLast7DaysVolume(allTicketsRes.data);
+          setChartData(volume);
+        }
+      } catch (error) {
+        console.error('Failed to load dashboard data', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchDashboardData();
+  }, []);
+
+  // Helper to process the 7-day volume
+  const calculateLast7DaysVolume = (tickets: TicketResponse[]) => {
+    const days = 7;
+    const result = [];
+    const now = new Date();
+
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      const dateString = d.toISOString().split('T')[0];
+      const label = d.toLocaleDateString('en-US', { weekday: 'short' });
+
+      const count = tickets.filter((t) => {
+        const ticketDate = new Date(t.createdDate).toISOString().split('T')[0];
+        return ticketDate === dateString;
+      }).length;
+
+      result.push({ name: label, tickets: count });
+    }
+    return result;
+  };
+
+  if (loading) return <div className="p-8 text-center">Initializing Command Center...</div>;
 
   const stats = [
-    { label: 'Total Tickets', value: '128', icon: Ticket, trend: '+12%', trendUp: true },
-    { label: 'Avg. Response', value: '1.2h', icon: Clock, trend: '-8%', trendUp: false },
-    { label: 'Resolved', value: '94', icon: CheckCircle2, trend: '+5%', trendUp: true },
-    { label: 'Critical', value: '3', icon: AlertCircle, trend: '0%', trendUp: true },
+    {
+      label: 'Pending',
+      value: report?.pendingTickets || 0,
+      icon: PauseCircle,
+      color: 'text-amber-500',
+    },
+    { label: 'Open', value: report?.openTickets || 0, icon: Ticket, color: 'text-blue-500' },
+    {
+      label: 'In Progress',
+      value: report?.inProgressTickets || 0,
+      icon: PlayCircle,
+      color: 'text-indigo-500',
+    },
+    {
+      label: 'Resolved',
+      value: report?.resolvedTickets || 0,
+      icon: CheckCircle,
+      color: 'text-emerald-500',
+    },
+    { label: 'Closed', value: report?.closedTickets || 0, icon: XCircle, color: 'text-slate-500' },
   ];
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-black tracking-tight mb-2">Command Center</h1>
-        <p className="text-slate-500 dark:text-slate-400">Real-time operational overview for {user?.firstName}.</p>
+        <h1 className="mb-2 text-3xl font-black tracking-tight">Dashboard</h1>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3 lg:grid-cols-5">
         {stats.map((stat) => (
-          <Card key={stat.label} className="border-none shadow-sm bg-white dark:bg-slate-900 overflow-hidden relative">
+          <Card
+            key={stat.label}
+            className="relative overflow-hidden border-none bg-white shadow-sm dark:bg-slate-900"
+          >
             <CardContent className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                  <stat.icon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-                </div>
-                <div className={cn(
-                  "flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full",
-                  stat.trendUp ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20" : "bg-rose-50 text-rose-600 dark:bg-rose-900/20"
-                )}>
-                  {stat.trendUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                  {stat.trend}
+              <div className="mb-4 flex items-start justify-between">
+                <div className="rounded-lg bg-slate-100 p-2 dark:bg-slate-800">
+                  <stat.icon className={cn('h-5 w-5', stat.color)} />
                 </div>
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{stat.label}</p>
-                <h3 className="text-3xl font-black tracking-tighter mt-1">{stat.value}</h3>
+                <p className="text-xs font-medium tracking-wider text-slate-500 uppercase dark:text-slate-400">
+                  {stat.label}
+                </p>
+                <h3 className="mt-1 text-2xl font-black tracking-tighter">{stat.value}</h3>
               </div>
             </CardContent>
-            <div className="absolute bottom-0 left-0 w-full h-1 bg-slate-100 dark:bg-slate-800" />
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-2 border-none shadow-sm bg-white dark:bg-slate-900">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        {/* Volume Chart */}
+        <Card className="border-none bg-white shadow-sm lg:col-span-2 dark:bg-slate-900">
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="text-xl font-bold tracking-tight">Ticket Volume</CardTitle>
-                <CardDescription>Daily incoming ticket distribution</CardDescription>
-              </div>
-              <Button variant="outline" size="sm" className="text-xs font-bold">Last 7 Days</Button>
-            </div>
+            <CardTitle>Ticket Volume</CardTitle>
+            <CardDescription>Daily incoming ticket distribution</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px] mt-4">
+          <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data}>
+              <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorTickets" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fontSize: 12, fill: '#94a3b8'}}
-                  dy={10}
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fontSize: 12, fill: '#94a3b8'}}
-                />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="tickets" 
-                  stroke="var(--color-primary)" 
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Area
+                  type="monotone"
+                  dataKey="tickets"
+                  stroke="#3b82f6"
                   strokeWidth={3}
-                  fillOpacity={1} 
-                  fill="url(#colorTickets)" 
+                  fill="url(#colorTickets)"
                 />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm bg-white dark:bg-slate-900">
+        {/* Recent Pending */}
+        <Card className="border-none bg-white shadow-sm dark:bg-slate-900">
           <CardHeader>
-            <CardTitle className="text-xl font-bold tracking-tight">Recent Activity</CardTitle>
-            <CardDescription>Latest updates across the system</CardDescription>
+            <CardTitle>Recent Pending</CardTitle>
+            <CardDescription>Recently made pending tickets</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {MOCK_TICKETS.slice(0, 5).map((ticket) => (
-              <div key={ticket.id} className="flex gap-4 group cursor-pointer">
-                <div className={cn(
-                  "w-1 h-12 rounded-full mt-1",
-                  ticket.priority === 'CRITICAL' ? "bg-rose-500" : 
-                  ticket.priority === 'HIGH' ? "bg-amber-500" : "bg-blue-500"
-                )} />
+            {pendingTickets.map((ticket) => (
+              <div key={ticket.id} className="group flex cursor-pointer gap-4">
+                <div className="mt-1 h-12 w-1 rounded-full bg-amber-500" />
                 <div className="flex-1">
-                  <div className="flex justify-between items-start mb-1">
-                    <h4 className="text-sm font-bold text-slate-950 dark:text-white group-hover:text-primary transition-colors line-clamp-1">
+                  <div className="mb-1 flex items-start justify-between">
+                    <h4 className="line-clamp-1 text-sm font-bold text-slate-950 transition-colors group-hover:text-primary dark:text-white">
                       {ticket.title}
                     </h4>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap ml-2">{formatDate(ticket.createdDate)}</span>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mb-2">
-                    {ticket.description}
-                  </p>
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-[10px] font-black px-1.5 py-0 h-4 uppercase">
+                    <Badge variant="secondary" className="text-[10px]">
                       #{ticket.id}
                     </Badge>
-                    <Badge className={cn(
-                      "text-[10px] font-black px-1.5 py-0 h-4 uppercase",
-                      ticket.status === 'IN_PROGRESS' ? "bg-blue-100 text-blue-700 hover:bg-blue-100" : "bg-slate-100 text-slate-700 hover:bg-slate-100"
-                    )}>
-                      {ticket.status.replace('_', ' ')}
-                    </Badge>
+                    <Badge className="bg-amber-100 text-[10px] text-amber-700">PENDING</Badge>
                   </div>
                 </div>
               </div>
             ))}
-            <Button variant="ghost" className="w-full text-xs font-bold text-slate-500 hover:text-primary">
-              View All Activity
-            </Button>
           </CardContent>
         </Card>
       </div>

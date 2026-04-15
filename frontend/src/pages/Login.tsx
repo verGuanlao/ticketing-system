@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Shield, Mail, Lock, Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { login } from '@/lib/utils';
+import { login, Role } from '@/lib/utils';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -25,7 +24,11 @@ export default function Login() {
       console.log(response.message);
       toast.success(response.message || 'Welcome back to Sentinel Core');
 
-      navigate('/dashboard');
+      if (response.data.role === Role.ADMIN) {
+        navigate('/dashboard');
+      } else {
+        navigate('/tickets');
+      }
     } else {
       const errorMsg = response?.message || 'Invalid credentials. Please try again.';
       toast.error(errorMsg);

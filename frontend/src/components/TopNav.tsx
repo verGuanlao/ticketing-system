@@ -1,15 +1,33 @@
-import { Search, Bell, HelpCircle, Menu, User as UserIcon } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useEffect, useState } from 'react';
+import { Bell, HelpCircle, Menu } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useUI } from '@/contexts/UIContext';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
+// Import your service and types
+import { getCurrentUser } from '@/lib/utils';
+import { UserResponse } from '@/lib/utils';
 
 export const TopNav = () => {
-  const { user } = useAuth();
   const { toggleSidebar, sidebarCollapsed } = useUI();
+  const [userData, setUserData] = useState<UserResponse | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const res = await getCurrentUser();
+      if (res.success) {
+        setUserData(res.data);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  // Helper to get initials for fallback
+  const getInitials = () => {
+    if (!userData) return '??';
+    return `${userData.firstName?.[0] || ''}${userData.lastName?.[0] || ''}`;
+  };
 
   return (
     <header
@@ -27,14 +45,6 @@ export const TopNav = () => {
         >
           <Menu className="h-5 w-5" />
         </Button>
-
-        <div className="relative w-full max-w-md">
-          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            className="h-9 w-full border-none bg-slate-100 pl-10 text-sm dark:bg-slate-900"
-            placeholder="Search ticket ID or subject..."
-          />
-        </div>
       </div>
 
       <div className="flex items-center gap-4">
@@ -50,17 +60,17 @@ export const TopNav = () => {
         <Link to="/profile" className="flex items-center gap-3 transition-opacity hover:opacity-80">
           <div className="hidden text-right sm:block">
             <p className="text-xs leading-none font-bold text-slate-950 dark:text-white">
-              {user?.firstName} {user?.lastName}
+              {userData ? `${userData.firstName} ${userData.lastName}` : 'Loading...'}
             </p>
             <p className="mt-1 text-[10px] font-medium text-slate-500 uppercase">
-              {user?.role.replace('_', ' ')}
+              {userData?.role?.replace('_', ' ') || 'User'}
             </p>
           </div>
           <Avatar className="h-9 w-9 border border-slate-200 dark:border-slate-800">
-            <AvatarImage src={user?.avatar} />
-            <AvatarFallback>
-              {user?.firstName[0]}
-              {user?.lastName[0]}
+            {/* Using optional chaining for safety */}
+            <AvatarImage src={userData?.avatar} alt="User Avatar" />
+            <AvatarFallback className="bg-primary text-[10px] font-bold text-white">
+              {getInitials()}
             </AvatarFallback>
           </Avatar>
         </Link>

@@ -55,6 +55,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -65,8 +66,6 @@ import {
 import { cn, formatDate } from '@/lib/utils';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { Pagination } from '@/components/Pagination';
-import { useTickets } from '@/contexts/TicketContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
   getAllTickets,
@@ -298,69 +297,91 @@ export default function TicketList() {
       </div>
 
       <Card className="overflow-hidden border-none bg-white shadow-sm dark:bg-slate-900">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 p-4 dark:border-slate-800">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              placeholder="Search title, ID, or agent..."
-              className="h-10 border-none bg-slate-50 pl-10 dark:bg-slate-800"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-            />
+        <div className="flex flex-wrap items-end justify-between gap-6 border-b border-slate-100 p-4 dark:border-slate-800">
+          <div className="flex flex-wrap items-center gap-6">
+            <div className="space-y-1.5">
+              <Label className="ml-1 text-[10px] font-black tracking-widest text-slate-400 uppercase">
+                Search Tickets
+              </Label>
+              <div className="relative w-full max-w-sm">
+                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  placeholder="Search title, ID, or agent..."
+                  className="h-10 border-none bg-slate-50 pl-10 dark:bg-slate-800"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="ml-1 text-[10px] font-black tracking-widest text-slate-400 uppercase">
+                Status
+              </Label>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => {
+                  setStatusFilter(v);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="h-10 w-[130px] border-none bg-slate-50 text-xs font-bold dark:bg-slate-800">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Statuses</SelectItem>
+                  <SelectItem value="OPEN">Open</SelectItem>
+                  <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                  <SelectItem value="RESOLVED">Resolved</SelectItem>
+                  <SelectItem value="CLOSED">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Select
-              value={statusFilter}
-              onValueChange={(v) => {
-                setStatusFilter(v);
-                setCurrentPage(1);
-              }}
-            >
-              <SelectTrigger className="h-10 w-[130px] border-none bg-slate-50 text-xs font-bold dark:bg-slate-800">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Statuses</SelectItem>
-                <SelectItem value="OPEN">Open</SelectItem>
-                <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                <SelectItem value="RESOLVED">Resolved</SelectItem>
-                <SelectItem value="CLOSED">Closed</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-6">
+            <div className="space-y-1.5">
+              <Label className="ml-1 text-[10px] font-black tracking-widest text-slate-400 uppercase">
+                Category
+              </Label>
+              <Select
+                value={categoryFilter}
+                onValueChange={(v) => {
+                  setCategoryFilter(v);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="h-10 w-[140px] border-none bg-slate-50 text-xs font-bold dark:bg-slate-800">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Categories</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.name} value={cat.name}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select
-              value={categoryFilter}
-              onValueChange={(v) => {
-                setCategoryFilter(v);
-                setCurrentPage(1);
-              }}
-            >
-              <SelectTrigger className="h-10 w-fit max-w-[220px] min-w-[120px] border-none bg-slate-50 px-4 text-xs font-bold dark:bg-slate-800">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Categories</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.name} value={cat.name}>
-                    {cat.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as any)}>
-              <SelectTrigger className="h-10 w-[130px] border-none bg-slate-50 text-xs font-bold dark:bg-slate-800">
-                <SelectValue placeholder="Sort" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="NEWEST">Newest First</SelectItem>
-                <SelectItem value="OLDEST">Oldest First</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-1.5">
+              <Label className="ml-1 text-[10px] font-black tracking-widest text-slate-400 uppercase">
+                Sort Order
+              </Label>
+              <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as any)}>
+                <SelectTrigger className="h-10 w-[130px] border-none bg-slate-50 text-xs font-bold dark:bg-slate-800">
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NEWEST">Newest First</SelectItem>
+                  <SelectItem value="OLDEST">Oldest First</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 

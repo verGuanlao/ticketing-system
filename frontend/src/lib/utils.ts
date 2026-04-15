@@ -266,6 +266,24 @@ export async function getMyAssignedTickets(): Promise<ApiResponse<TicketResponse
   }
 }
 
+// Get tickets by status
+export const getTicketsByStatus = async (
+  status: TicketStatus
+): Promise<ApiResponse<TicketResponse[]>> => {
+  try {
+    const response = await api.get<ApiResponse<TicketResponse[]>>(
+      API_URLS.TICKETS_BY_STATUS(status)
+    );
+    return response.data;
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.response?.data?.message || `Failed to retrieve ${status} tickets`,
+      data: [],
+    };
+  }
+};
+
 // Update ticket title, description, or other allowed fields
 export async function updateTicket(
   id: number,
@@ -563,6 +581,19 @@ export async function getAgentPerformanceById(
     return response.data;
   } catch (error: any) {
     return error.response?.data as ApiResponse<AgentPerformanceResponse>;
+  }
+}
+
+export async function getMaxWorkload(): Promise<ApiResponse<number>> {
+  try {
+    const response = await api.get<ApiResponse<number>>(API_URLS.USER_MAX_WORKLOAD);
+    return response.data;
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to fetch max workload',
+      data: 0,
+    };
   }
 }
 

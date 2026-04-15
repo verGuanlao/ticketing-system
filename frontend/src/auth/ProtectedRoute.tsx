@@ -14,7 +14,7 @@ const ProtectedRoute = ({ allowedRoles, children }: ProtectedRouteProps) => {
   if (!token) return <Navigate to="/login" replace />;
 
   if (allowedRoles && !allowedRoles.includes(role ?? '')) {
-    return <Navigate to="/unauthorized" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
