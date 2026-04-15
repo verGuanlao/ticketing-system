@@ -5,68 +5,122 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { register } from '@/lib/utils'; // Ensure this matches your file path
 
 export default function Register() {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // Simulate registration
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast.success('Account created successfully! Please login.');
-    navigate('/login');
+
+    const response = await register({
+      firstName,
+      lastName,
+      email,
+      password,
+    });
+
+    if (response && response.success) {
+      toast.success(response.message || 'Account created successfully! Please login.');
+      navigate('/login');
+    } else {
+      toast.error(response?.message || 'Registration failed. Please try again.');
+    }
+
     setIsSubmitting(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-6">
-      <div className="w-full max-w-[500px] bg-white dark:bg-slate-900 rounded-2xl p-8 md:p-10 shadow-2xl border border-slate-200 dark:border-slate-800 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
-        
-        <div className="text-center mb-10">
-          <div className="flex justify-center mb-4">
-            <Shield className="w-10 h-10 text-primary" />
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6 dark:bg-slate-950">
+      <div className="relative w-full max-w-[500px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 shadow-2xl md:p-10 dark:border-slate-800 dark:bg-slate-900">
+        <div className="absolute top-0 left-0 h-1 w-full bg-primary" />
+
+        <div className="mb-10 text-center">
+          <div className="mb-4 flex justify-center">
+            <Shield className="h-10 w-10 text-primary" />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tighter mb-2">Sentinel Core</h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">Create your enterprise client account</p>
+          <h1 className="mb-2 text-3xl font-extrabold tracking-tighter">Sentinel Core</h1>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            Create your enterprise client account
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-1.5">
-            <Label htmlFor="name">Full Name</Label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <Input id="name" placeholder="Johnathan Sterling" className="pl-10" required />
+          {/* First Name & Last Name Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="firstName">First Name</Label>
+              <div className="relative">
+                <User className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  id="firstName"
+                  placeholder="Johnathan"
+                  className="pl-10 placeholder:text-slate-500/40 placeholder:italic dark:placeholder:text-slate-400/30"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="lastName">Last Name</Label>
+              <div className="relative">
+                <User className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  id="lastName"
+                  placeholder="Sterling"
+                  className="pl-10 placeholder:text-slate-500/40 placeholder:italic dark:placeholder:text-slate-400/30"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
+              </div>
             </div>
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="email">Business Email</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <Input id="email" type="email" placeholder="j.sterling@enterprise.com" className="pl-10" required />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="company">Company Name</Label>
-            <div className="relative">
-              <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <Input id="company" placeholder="Sterling Global Systems" className="pl-10" required />
+              <Mail className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="j.sterling@enterprise.com"
+                className="pl-10 placeholder:text-slate-500/40 placeholder:italic dark:placeholder:text-slate-400/30"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
             </div>
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="password">Password</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <Input id="password" type="password" placeholder="••••••••••••" className="pl-10" required />
+              <Lock className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••••••"
+                className="pl-10 placeholder:text-slate-500/40 placeholder:italic dark:placeholder:text-slate-400/30"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
             </div>
           </div>
 
-          <Button type="submit" className="w-full h-12 font-bold shadow-lg mt-2" disabled={isSubmitting}>
+          <Button
+            type="submit"
+            className="mt-2 h-12 w-full font-bold shadow-lg"
+            disabled={isSubmitting}
+          >
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -78,9 +132,11 @@ export default function Register() {
           </Button>
         </form>
 
-        <p className="text-center mt-8 text-sm text-slate-500 dark:text-slate-400">
-          Already registered? {' '}
-          <Link to="/login" className="font-bold text-primary hover:underline">Log in to your account</Link>
+        <p className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
+          Already registered?{' '}
+          <Link to="/login" className="font-bold text-primary hover:underline">
+            Log in to your account
+          </Link>
         </p>
       </div>
     </div>

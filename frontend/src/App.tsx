@@ -12,6 +12,7 @@ import Analytics from './pages/Analytics';
 import Agents from './pages/Agents';
 import Clients from './pages/Clients';
 import Profile from './pages/Profile';
+import ProtectedRoute from './auth/ProtectedRoute';
 
 export default function App() {
   return (
@@ -21,9 +22,15 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            
-            <Route element={<Layout />}>
-              <Route path="/" element={<Dashboard />} />
+
+            <Route
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/tickets" element={<TicketList />} />
               <Route path="/tickets/new" element={<NewTicket />} />
               <Route path="/tickets/edit/:id" element={<NewTicket />} />
@@ -35,7 +42,7 @@ export default function App() {
               <Route path="/profile" element={<Profile />} />
             </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Router>
       </TicketProvider>
