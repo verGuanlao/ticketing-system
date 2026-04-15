@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Search,
@@ -62,21 +62,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MOCK_USERS, MOCK_CATEGORIES } from '@/mockData';
-import { TicketPriority, TicketStatus } from '@/types';
 import { cn, formatDate } from '@/lib/utils';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { Pagination } from '@/components/Pagination';
 import { useTickets } from '@/contexts/TicketContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import {
+  getAllTickets,
+  getMyTickets,
+  getMyAssignedTickets,
+  updateTicketStatus,
+  deleteTicket,
+  autoAssignTicket,
+  assignTicket,
+  getAllCategories,
+  getUsersByRole,
+  CategoryResponse,
+  TicketResponse,
+  TicketStatus,
+  Role,
+  UserResponse,
+  ApiResponse,
+} from '@/lib/utils';
+import { getUserRole } from '../auth/authService';
 
 export default function TicketList() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
-  const { tickets, updateTicketStatus, reassignTicket, deleteTicket } = useTickets();
+  const role = getUserRole(); // Use the role helper as requested
 
+  const [tickets, setTickets] = useState<TicketResponse[]>([]);
+  const [categories, setCategories] = useState<CategoryResponse[]>([]);
+  const [agents, setAgents] = useState<UserResponse[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
@@ -85,35 +103,57 @@ export default function TicketList() {
   const pageSize = 8;
 
   const isAssignedPage = location.pathname === '/assigned';
-  const pageTitle = isAssignedPage ? 'Assigned Incidents' : 'My Support Tickets';
+  const pageTitle = isAssignedPage ? 'Assigned Incidents' : 'Support Tickets';
   const pageDescription = isAssignedPage
     ? 'Manage technical issues assigned to your queue.'
     : 'View and track your personal support requests.';
 
-  // Filter logic
-  const filteredTickets = tickets.filter((t) => {
-    // Role based visibility
-    if (user?.role === 'CLIENT' && t.createdBy !== user.id) return false;
-    if (isAssignedPage && t.assignedAgent !== user?.id) return false;
+  const showCreatedBy = role === 'ADMIN' || (role === 'SUPPORT_AGENT' && isAssignedPage);
+  const showAssignedTo =
+    role === 'ADMIN' || role === 'CLIENT' || (role === 'SUPPORT_AGENT' && !isAssignedPage);
 
-    // Search term (title or agent name)
-    const agent = MOCK_USERS.find((u) => u.id === t.assignedAgent);
-    const agentName = agent ? `${agent.firstName} ${agent.lastName}`.toLowerCase() : 'unassigned';
+  const fetchData = async () => {
+    const promises: [
+      Promise<ApiResponse<TicketResponse[]>>,
+      Promise<ApiResponse<CategoryResponse[]>>,
+      Promise<ApiResponse<UserResponse[]> | null>, // Move the null inside the Promise
+    ] = [
+      isAssignedPage ? getMyAssignedTickets() : role === 'ADMIN' ? getAllTickets() : getMyTickets(),
+      getAllCategories(),
+      role === 'ADMIN'
+        ? getUsersByRole(Role.SUPPORT_AGENT)
+        : (Promise.resolve(null) as Promise<null>),
+    ];
+
+    const [ticketRes, categoryRes, agentRes] = await Promise.all(promises);
+
+    if (ticketRes?.success) setTickets(ticketRes.data);
+    if (categoryRes?.success) setCategories(categoryRes.data);
+
+    if (agentRes && agentRes.success) {
+      setAgents(agentRes.data);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [location.pathname]);
+
+  const filteredTickets = tickets.filter((t) => {
+    // Search Term: ID, Title, or Agent Name (Agent name check assumes agent object is in response)
+    const agentName = t.assignedAgent ? `${t.assignedAgent}`.toLowerCase() : 'unassigned';
+
     const matchesSearch =
       t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       agentName.includes(searchTerm.toLowerCase()) ||
       t.id.toString().includes(searchTerm);
 
-    // Status filter
     const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter;
-
-    // Category filter
-    const matchesCategory = categoryFilter === 'ALL' || t.categoryId.toString() === categoryFilter;
+    const matchesCategory = categoryFilter === 'ALL' || t.category?.name === categoryFilter;
 
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
-  // Sort logic
   const sortedTickets = [...filteredTickets].sort((a, b) => {
     const dateA = new Date(a.createdDate).getTime();
     const dateB = new Date(b.createdDate).getTime();
@@ -121,66 +161,81 @@ export default function TicketList() {
   });
 
   const totalPages = Math.ceil(sortedTickets.length / pageSize);
+
   const paginatedTickets = sortedTickets.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize
   );
 
-  const showCreatedBy =
-    user?.role === 'ADMIN' || (user?.role === 'SUPPORT_AGENT' && isAssignedPage);
-  const showAssignedTo =
-    user?.role === 'ADMIN' ||
-    user?.role === 'CLIENT' ||
-    (user?.role === 'SUPPORT_AGENT' && !isAssignedPage);
-
-  const handleStatusChange = (ticketId: number, status: TicketStatus) => {
-    updateTicketStatus(ticketId, status);
-    toast.success(`Ticket #${ticketId} status updated to ${status.replace('_', ' ')}`);
-  };
-
-  const handleReassign = (ticketId: number, agentId: number) => {
-    reassignTicket(ticketId, agentId);
-    const agent = MOCK_USERS.find((u) => u.id === agentId);
-    toast.success(`Ticket #${ticketId} reassigned to ${agent?.firstName} ${agent?.lastName}`);
-  };
-
-  const handleAutoAssign = (ticketId: number) => {
-    const agents = MOCK_USERS.filter((u) => u.role === 'SUPPORT_AGENT');
-    const randomAgent = agents[Math.floor(Math.random() * agents.length)];
-    if (randomAgent) {
-      reassignTicket(ticketId, randomAgent.id);
-      toast.success(
-        `Ticket #${ticketId} auto-assigned to ${randomAgent.firstName} ${randomAgent.lastName}`
+  const handleStatusChange = async (ticketId: number, status: TicketStatus) => {
+    const res = await updateTicketStatus(ticketId, status);
+    if (res.success) {
+      toast.success(res.message);
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === ticketId ? { ...t, status: status, resolvedDate: res.data.resolvedDate } : t
+        )
       );
+    } else {
+      toast.error(res.message);
     }
   };
 
-  const handleDelete = (ticketId: number) => {
-    deleteTicket(ticketId);
-    toast.success(`Ticket #${ticketId} deleted`);
+  const handleReassign = async (ticketId: number, agentId: number) => {
+    const request = { agentId };
+    const res = await assignTicket(ticketId, request);
+
+    if (res.success) {
+      toast.success(res.message);
+
+      setTickets((prev) => prev.map((t) => (t.id === ticketId ? res.data : t)));
+    } else {
+      toast.error(res.message || 'Failed to reassign ticket');
+    }
   };
 
-  const getPriorityBadge = (priority: TicketPriority) => {
+  const handleAutoAssign = async (ticketId: number) => {
+    const res = await autoAssignTicket(ticketId);
+    if (res.success) {
+      toast.success(res.message);
+      setTickets((prev) => prev.map((t) => (t.id === ticketId ? res.data : t)));
+    } else {
+      toast.error(res.message);
+    }
+  };
+
+  // 4. Optimized Delete (Filter out the ID)
+  const handleDelete = async (ticketId: number) => {
+    const res = await deleteTicket(ticketId);
+    if (res.success) {
+      toast.success(res.message);
+      setTickets((prev) => prev.filter((t) => t.id !== ticketId));
+    } else {
+      toast.error(res.message);
+    }
+  };
+
+  const getPriorityBadge = (priority: number) => {
     switch (priority) {
-      case 'CRITICAL':
+      case 4:
         return (
           <Badge className="bg-rose-500 px-2 text-[10px] font-black text-white uppercase hover:bg-rose-600">
             Critical
           </Badge>
         );
-      case 'HIGH':
+      case 3:
         return (
           <Badge className="bg-amber-500 px-2 text-[10px] font-black text-white uppercase hover:bg-amber-600">
             High
           </Badge>
         );
-      case 'MEDIUM':
+      case 2:
         return (
           <Badge className="bg-blue-500 px-2 text-[10px] font-black text-white uppercase hover:bg-blue-600">
             Medium
           </Badge>
         );
-      case 'LOW':
+      case 1:
         return (
           <Badge className="bg-slate-500 px-2 text-[10px] font-black text-white uppercase hover:bg-slate-600">
             Low
@@ -284,13 +339,13 @@ export default function TicketList() {
                 setCurrentPage(1);
               }}
             >
-              <SelectTrigger className="h-10 w-[140px] border-none bg-slate-50 text-xs font-bold dark:bg-slate-800">
+              <SelectTrigger className="h-10 w-fit max-w-[220px] min-w-[120px] border-none bg-slate-50 px-4 text-xs font-bold dark:bg-slate-800">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">All Categories</SelectItem>
-                {MOCK_CATEGORIES.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id.toString()}>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.name} value={cat.name}>
                     {cat.name}
                   </SelectItem>
                 ))}
@@ -348,9 +403,9 @@ export default function TicketList() {
           </TableHeader>
           <TableBody>
             {paginatedTickets.map((ticket) => {
-              const agent = MOCK_USERS.find((u) => u.id === ticket.assignedAgent);
-              const creator = MOCK_USERS.find((u) => u.id === ticket.createdBy);
-              const category = MOCK_CATEGORIES.find((c) => c.id === ticket.categoryId);
+              const agent = ticket.assignedAgent;
+              const creator = ticket.createdBy;
+              const category = ticket.category;
 
               return (
                 <TableRow
@@ -384,10 +439,10 @@ export default function TicketList() {
                       {creator ? (
                         <div className="flex items-center gap-2">
                           <div className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[9px] font-bold dark:bg-slate-800">
-                            {creator.firstName[0]}
+                            {creator[0]}
                           </div>
                           <span className="max-w-[80px] truncate text-[11px] font-medium">
-                            {creator.firstName}
+                            {creator}
                           </span>
                         </div>
                       ) : (
@@ -400,10 +455,10 @@ export default function TicketList() {
                       {agent ? (
                         <div className="flex items-center gap-2">
                           <div className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-[9px] font-bold dark:bg-slate-700">
-                            {agent.firstName[0]}
+                            {agent[0]}
                           </div>
                           <span className="max-w-[80px] truncate text-[11px] font-medium">
-                            {agent.firstName}
+                            {agent}
                           </span>
                         </div>
                       ) : (
@@ -431,9 +486,7 @@ export default function TicketList() {
                           <Eye className="mr-2 h-4 w-4" /> View Details
                         </DropdownMenuItem>
 
-                        {(user?.role === 'ADMIN' ||
-                          (user?.role === 'CLIENT' && ticket.createdBy === user.id) ||
-                          user?.role === 'SUPPORT_AGENT') && (
+                        {(role === 'ADMIN' || role === 'CLIENT' || role === 'SUPPORT_AGENT') && (
                           <DropdownMenuItem onClick={() => navigate(`/tickets/edit/${ticket.id}`)}>
                             <Edit2 className="mr-2 h-4 w-4" /> Edit Parameters
                           </DropdownMenuItem>
@@ -442,11 +495,11 @@ export default function TicketList() {
                         <DropdownMenuSeparator />
 
                         {/* Role Based Actions */}
-                        {(user?.role === 'CLIENT' || user?.role === 'ADMIN') && (
+                        {(role === 'CLIENT' || role === 'ADMIN') && (
                           <>
                             {ticket.status === 'OPEN' && (
                               <DropdownMenuItem
-                                onClick={() => handleStatusChange(ticket.id, 'CLOSED')}
+                                onClick={() => handleStatusChange(ticket.id, TicketStatus.CLOSED)}
                               >
                                 <Clock className="mr-2 h-4 w-4 text-rose-500" /> Close Ticket
                               </DropdownMenuItem>
@@ -454,12 +507,12 @@ export default function TicketList() {
                             {ticket.status === 'RESOLVED' && (
                               <>
                                 <DropdownMenuItem
-                                  onClick={() => handleStatusChange(ticket.id, 'OPEN')}
+                                  onClick={() => handleStatusChange(ticket.id, TicketStatus.OPEN)}
                                 >
                                   <Eye className="mr-2 h-4 w-4 text-emerald-500" /> Re-open Ticket
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => handleStatusChange(ticket.id, 'CLOSED')}
+                                  onClick={() => handleStatusChange(ticket.id, TicketStatus.CLOSED)}
                                 >
                                   <Clock className="mr-2 h-4 w-4 text-rose-500" /> Close Ticket
                                 </DropdownMenuItem>
@@ -468,18 +521,20 @@ export default function TicketList() {
                           </>
                         )}
 
-                        {(user?.role === 'SUPPORT_AGENT' || user?.role === 'ADMIN') && (
+                        {(role === 'SUPPORT_AGENT' || role === 'ADMIN') && (
                           <>
                             {ticket.status === 'OPEN' && (
                               <DropdownMenuItem
-                                onClick={() => handleStatusChange(ticket.id, 'IN_PROGRESS')}
+                                onClick={() =>
+                                  handleStatusChange(ticket.id, TicketStatus.IN_PROGRESS)
+                                }
                               >
                                 <Clock className="mr-2 h-4 w-4 text-blue-500" /> Mark In Progress
                               </DropdownMenuItem>
                             )}
                             {ticket.status === 'IN_PROGRESS' && (
                               <DropdownMenuItem
-                                onClick={() => handleStatusChange(ticket.id, 'RESOLVED')}
+                                onClick={() => handleStatusChange(ticket.id, TicketStatus.RESOLVED)}
                               >
                                 <MessageSquare className="mr-2 h-4 w-4 text-emerald-500" /> Mark
                                 Resolved
@@ -488,7 +543,7 @@ export default function TicketList() {
                           </>
                         )}
 
-                        {user?.role === 'ADMIN' && (
+                        {role === 'ADMIN' && (
                           <>
                             {!ticket.assignedAgent && (
                               <DropdownMenuItem onClick={() => handleAutoAssign(ticket.id)}>
@@ -505,30 +560,28 @@ export default function TicketList() {
                                   <CommandList>
                                     <CommandEmpty>No agents found.</CommandEmpty>
                                     <CommandGroup>
-                                      {MOCK_USERS.filter((u) => u.role === 'SUPPORT_AGENT').map(
-                                        (agent) => (
-                                          <CommandItem
-                                            key={agent.id}
-                                            onSelect={() => handleReassign(ticket.id, agent.id)}
-                                            className="flex items-center gap-2"
-                                          >
-                                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold">
-                                              {agent.firstName[0]}
-                                            </div>
-                                            <span className="text-xs font-medium">
-                                              {agent.firstName} {agent.lastName}
-                                            </span>
-                                            <Check
-                                              className={cn(
-                                                'ml-auto h-4 w-4',
-                                                ticket.assignedAgent === agent.id
-                                                  ? 'opacity-100'
-                                                  : 'opacity-0'
-                                              )}
-                                            />
-                                          </CommandItem>
-                                        )
-                                      )}
+                                      {agents.map((agent) => (
+                                        <CommandItem
+                                          key={agent.id}
+                                          onSelect={() => handleReassign(ticket.id, agent.id)}
+                                          className="flex items-center gap-2"
+                                        >
+                                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold">
+                                            {agent.firstName[0]}
+                                          </div>
+                                          <span className="text-xs font-medium">
+                                            {agent.firstName} {agent.lastName}
+                                          </span>
+                                          <Check
+                                            className={cn(
+                                              'ml-auto h-4 w-4',
+                                              ticket.assignedAgent === agent.fullName
+                                                ? 'opacity-100'
+                                                : 'opacity-0'
+                                            )}
+                                          />
+                                        </CommandItem>
+                                      ))}
                                     </CommandGroup>
                                   </CommandList>
                                 </Command>

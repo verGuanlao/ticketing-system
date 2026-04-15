@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Send, 
-  Paperclip, 
-  Clock, 
-  User, 
-  Tag, 
+import {
+  ArrowLeft,
+  Send,
+  Paperclip,
+  Clock,
+  User,
+  Tag,
   AlertTriangle,
   CheckCircle2,
   MoreVertical,
   History,
   Trash2,
-  Eye
+  Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -21,17 +21,6 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  MOCK_TICKETS, 
-  MOCK_USERS, 
-  MOCK_MESSAGES, 
-  MOCK_CATEGORIES 
-} from '@/mockData';
-import { TicketStatus } from '@/types';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTickets } from '@/contexts/TicketContext';
-import { cn, formatDate } from '@/lib/utils';
-import { toast } from 'sonner';
 import {
   Command,
   CommandEmpty,
@@ -39,127 +28,268 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Check, ChevronsUpDown, Sparkles, UserPlus, ChevronDown } from "lucide-react";
+} from '@/components/ui/dropdown-menu';
+import { Check, ChevronsUpDown, Sparkles, UserPlus, ChevronDown } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  getTicketById,
+  getTicketMessages,
+  getUsersByRole,
+  addMessage,
+  deleteMessage,
+  updateTicketStatus,
+  assignTicket,
+  autoAssignTicket,
+  ApiResponse,
+  TicketResponse,
+  MessageResponse,
+  UserResponse,
+  Role,
+  TicketStatus,
+  cn,
+  formatDate,
+} from '@/lib/utils';
+import { getUserRole } from '../auth/authService';
+import { getUsername } from '@/auth/tokenUtils';
 
 export default function TicketDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { tickets, reassignTicket, updateTicketStatus } = useTickets();
+  const role = getUserRole();
+  const currentEmail = getUsername();
+
+  const [ticket, setTicket] = useState<TicketResponse | null>(null);
+  const [messages, setMessages] = useState<MessageResponse[]>([]);
   const [message, setMessage] = useState('');
+  const [messageText, setMessageText] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const [isAssignPopoverOpen, setIsAssignPopoverOpen] = useState(false);
-  const [localMessages, setLocalMessages] = useState(MOCK_MESSAGES.filter(m => m.ticketId === Number(id)));
+  const [agents, setAgents] = useState<UserResponse[]>([]);
+
+  const fetchTicketData = async () => {
+    if (!id) return;
+    setIsLoading(true);
+
+    try {
+      // 1. Define the promises
+      const promises: [
+        Promise<ApiResponse<TicketResponse>>,
+        Promise<ApiResponse<MessageResponse[]>>,
+        Promise<ApiResponse<UserResponse[]> | null>,
+      ] = [
+        getTicketById(Number(id)),
+        getTicketMessages(Number(id)),
+        // Only fetch agents list if the current user is an ADMIN
+        role === 'ADMIN' ? getUsersByRole(Role.SUPPORT_AGENT) : Promise.resolve(null),
+      ];
+
+      const [ticketRes, messageRes, agentRes] = await Promise.all(promises);
+
+      // 2. Handle Ticket Data
+      if (ticketRes?.success) {
+        setTicket(ticketRes.data);
+      } else {
+        toast.error(ticketRes?.message || 'Ticket not found');
+      }
+
+      // 3. Handle Messages
+      if (messageRes?.success) {
+        setMessages(messageRes.data);
+      }
+
+      // 4. Handle Agents (Admin Only)
+      if (agentRes && agentRes.success) {
+        setAgents(agentRes.data);
+      }
+    } catch (error) {
+      console.error('Fetch error:', error);
+      toast.error('An error occurred while fetching ticket details.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    fetchTicketData();
   }, [id]);
-  
-  const ticket = tickets.find(t => t.id === Number(id));
-  const creator = MOCK_USERS.find(u => u.id === ticket?.createdBy);
-  const agent = MOCK_USERS.find(u => u.id === ticket?.assignedAgent);
-  const category = MOCK_CATEGORIES.find(c => c.id === ticket?.categoryId);
-  const messages = MOCK_MESSAGES.filter(m => m.ticketId === Number(id));
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!messageText.trim() || !id) return;
+    const res = await addMessage(Number(id), { text: messageText });
+
+    if (res?.success) {
+      setMessages((prev) => [...prev, res.data]); // Optimistic update
+      setMessageText('');
+      toast.success(res.message);
+    } else {
+      toast.error(res?.message || 'Failed to send message');
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: number) => {
+    if (!id) return;
+    const res = await deleteMessage(Number(id), messageId);
+
+    if (res?.success) {
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      toast.success('Message deleted');
+    } else {
+      toast.error(res?.message || 'Failed to delete message');
+    }
+  };
+
+  const handleManualAssign = async (agentId: number) => {
+    if (!id) return;
+    const res = await assignTicket(Number(id), { agentId });
+
+    if (res?.success) {
+      setTicket(res.data);
+      setIsAssignPopoverOpen(false);
+      toast.success(res.message);
+    } else {
+      toast.error(res?.message);
+    }
+  };
+
+  const handleAutoAssign = async () => {
+    if (!id) return;
+    const res = await autoAssignTicket(Number(id));
+
+    if (res?.success) {
+      setTicket(res.data);
+      toast.success(res.message);
+    } else {
+      toast.error(res?.message);
+    }
+  };
+
+  const handleStatusChange = async (status: TicketStatus) => {
+    if (!id) return;
+    const res = await updateTicketStatus(Number(id), status);
+
+    if (res?.success) {
+      setTicket((prev) => (prev ? { ...prev, status } : null));
+      toast.success(`Status updated to ${status.replace('_', ' ')}`);
+    } else {
+      toast.error(res?.message);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">Loading Ticket Details...</div>
+    );
+  }
 
   if (!ticket) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh]">
-        <h2 className="text-2xl font-bold mb-4">Ticket Not Found</h2>
+      <div className="flex h-[60vh] flex-col items-center justify-center">
+        <h2 className="mb-4 text-2xl font-bold">Ticket Not Found</h2>
         <Button onClick={() => navigate('/tickets')}>Back to Repository</Button>
       </div>
     );
   }
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!message.trim()) return;
-    
-    const newMessage = {
-      id: Date.now(),
-      text: message,
-      timestamp: new Date().toISOString(),
-      ticketId: Number(id),
-      senderId: user?.id || 0
-    };
-
-    setLocalMessages(prev => [...prev, newMessage]);
-    toast.success('Comment added to ticket');
-    setMessage('');
-  };
-
-  const handleDeleteMessage = (messageId: number) => {
-    setLocalMessages(prev => prev.filter(m => m.id !== messageId));
-    toast.success('Message deleted');
-  };
-
-  const handleManualAssign = (agentId: number) => {
-    if (!ticket) return;
-    reassignTicket(ticket.id, agentId);
-    setIsAssignPopoverOpen(false);
-    toast.success('Agent assigned successfully');
-  };
-
-  const handleAutoAssign = () => {
-    if (!ticket) return;
-    // Simple auto-assign logic: pick a random agent for demo
-    const agents = MOCK_USERS.filter(u => u.role === 'SUPPORT_AGENT');
-    const randomAgent = agents[Math.floor(Math.random() * agents.length)];
-    if (randomAgent) {
-      reassignTicket(ticket.id, randomAgent.id);
-      toast.success(`Auto-assigned to ${randomAgent.firstName} ${randomAgent.lastName}`);
-    }
-  };
-
-  const handleStatusChange = (status: TicketStatus) => {
-    if (!ticket) return;
-    updateTicketStatus(ticket.id, status);
-    toast.success(`Ticket status updated to ${status.replace('_', ' ')}`);
-  };
-
   const getStatusBadge = (status: TicketStatus) => {
     switch (status) {
-      case 'OPEN': return <Badge variant="outline" className="border-emerald-500 text-emerald-600 font-black text-[10px] uppercase px-2">Open</Badge>;
-      case 'IN_PROGRESS': return <Badge variant="outline" className="border-blue-500 text-blue-600 font-black text-[10px] uppercase px-2">In Progress</Badge>;
-      case 'RESOLVED': return <Badge variant="outline" className="border-slate-400 text-slate-500 font-black text-[10px] uppercase px-2">Resolved</Badge>;
-      case 'CLOSED': return <Badge variant="outline" className="border-slate-900 text-slate-900 font-black text-[10px] uppercase px-2">Closed</Badge>;
-      default: return null;
+      case 'OPEN':
+        return (
+          <Badge
+            variant="outline"
+            className="border-emerald-500 px-2 text-[10px] font-black text-emerald-600 uppercase"
+          >
+            Open
+          </Badge>
+        );
+      case 'IN_PROGRESS':
+        return (
+          <Badge
+            variant="outline"
+            className="border-blue-500 px-2 text-[10px] font-black text-blue-600 uppercase"
+          >
+            In Progress
+          </Badge>
+        );
+      case 'RESOLVED':
+        return (
+          <Badge
+            variant="outline"
+            className="border-slate-400 px-2 text-[10px] font-black text-slate-500 uppercase"
+          >
+            Resolved
+          </Badge>
+        );
+      case 'CLOSED':
+        return (
+          <Badge
+            variant="outline"
+            className="border-slate-900 px-2 text-[10px] font-black text-slate-900 uppercase"
+          >
+            Closed
+          </Badge>
+        );
+      default:
+        return null;
     }
   };
 
   const availableTransitions = (() => {
     const transitions: { status: TicketStatus; label: string; icon: any; color: string }[] = [];
-    
-    if (!user || !ticket) return transitions;
+
+    if (!role || !ticket) return transitions;
 
     // Client/Admin transitions
-    if (user.role === 'CLIENT' || user.role === 'ADMIN') {
+    if (role === 'CLIENT' || role === 'ADMIN') {
       if (ticket.status === 'OPEN') {
-        transitions.push({ status: 'CLOSED', label: 'Close Ticket', icon: Clock, color: 'text-rose-500' });
+        transitions.push({
+          status: TicketStatus.CLOSED,
+          label: 'Close Ticket',
+          icon: Clock,
+          color: 'text-rose-500',
+        });
       }
       if (ticket.status === 'RESOLVED') {
-        transitions.push({ status: 'OPEN', label: 'Re-open Ticket', icon: Eye, color: 'text-emerald-500' });
-        transitions.push({ status: 'CLOSED', label: 'Close Ticket', icon: Clock, color: 'text-rose-500' });
+        transitions.push({
+          status: TicketStatus.OPEN,
+          label: 'Re-open Ticket',
+          icon: Eye,
+          color: 'text-emerald-500',
+        });
+        transitions.push({
+          status: TicketStatus.CLOSED,
+          label: 'Close Ticket',
+          icon: Clock,
+          color: 'text-rose-500',
+        });
       }
     }
 
     // Agent/Admin transitions
-    if (user.role === 'SUPPORT_AGENT' || user.role === 'ADMIN') {
+    if (role === 'SUPPORT_AGENT' || role === 'ADMIN') {
       if (ticket.status === 'OPEN') {
-        transitions.push({ status: 'IN_PROGRESS', label: 'Mark In Progress', icon: Clock, color: 'text-blue-500' });
+        transitions.push({
+          status: TicketStatus.IN_PROGRESS,
+          label: 'Mark In Progress',
+          icon: Clock,
+          color: 'text-blue-500',
+        });
       }
       if (ticket.status === 'IN_PROGRESS') {
-        transitions.push({ status: 'RESOLVED', label: 'Mark Resolved', icon: CheckCircle2, color: 'text-emerald-500' });
+        transitions.push({
+          status: TicketStatus.RESOLVED,
+          label: 'Mark Resolved',
+          icon: CheckCircle2,
+          color: 'text-emerald-500',
+        });
       }
     }
 
@@ -167,18 +297,25 @@ export default function TicketDetail() {
   })();
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-12">
-      <div className="flex items-center gap-4 mb-2">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/tickets')} className="rounded-full">
-          <ArrowLeft className="w-5 h-5" />
+    <div className="mx-auto max-w-6xl space-y-6 pb-12">
+      <div className="mb-2 flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate('/tickets')}
+          className="rounded-full"
+        >
+          <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <span className="text-xs font-mono text-slate-400">TICKET-#{ticket.id}</span>
-            <Badge className={cn(
-              "text-[10px] font-black uppercase px-2",
-              ticket.priority === 'CRITICAL' ? "bg-rose-500" : "bg-blue-500"
-            )}>
+          <div className="mb-1 flex items-center gap-3">
+            <span className="font-mono text-xs text-slate-400">TICKET-#{ticket.id}</span>
+            <Badge
+              className={cn(
+                'px-2 text-[10px] font-black uppercase',
+                ticket.priority === 4 ? 'bg-rose-500' : 'bg-blue-500'
+              )}
+            >
               {ticket.priority}
             </Badge>
           </div>
@@ -186,22 +323,25 @@ export default function TicketDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="border-none shadow-sm bg-white dark:bg-slate-900">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <Card className="border-none bg-white shadow-sm dark:bg-slate-900">
             <CardHeader className="pb-4">
-              <div className="flex items-center gap-3 mb-4">
-                <Avatar className="w-10 h-10">
-                  <AvatarImage src={creator?.avatar} />
-                  <AvatarFallback>{creator?.firstName[0]}</AvatarFallback>
+              <div className="mb-4 flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  {/* TO DO: change avatar url */}
+                  <AvatarImage src="https://i.pravatar.cc/150?u=4" />
+                  <AvatarFallback>{ticket.createdBy[0]}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm font-bold">{creator?.firstName} {creator?.lastName}</p>
-                  <p className="text-xs text-slate-500">Reported on {formatDate(ticket.createdDate)}</p>
+                  <p className="text-sm font-bold">{ticket.createdBy[0]}</p>
+                  <p className="text-xs text-slate-500">
+                    Reported on {formatDate(ticket.createdDate)}
+                  </p>
                 </div>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-100 dark:border-slate-800">
-                <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-800/50">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap text-slate-700 dark:text-slate-300">
                   {ticket.description}
                 </p>
               </div>
@@ -209,41 +349,57 @@ export default function TicketDetail() {
           </Card>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 px-2">Communication Log</h3>
-            
+            <h3 className="px-2 text-sm font-black tracking-widest text-slate-400 uppercase">
+              Communication Log
+            </h3>
+
             <div className="space-y-6">
-              {localMessages.map((msg) => {
-                const sender = MOCK_USERS.find(u => u.id === msg.senderId);
-                const isMe = sender?.id === user?.id;
-                
+              {messages.map((msg) => {
+                const sender = msg.sender;
+                const isMe = sender?.email === currentEmail;
+
                 return (
-                  <div key={msg.id} className={cn("flex gap-4 group", isMe ? "flex-row-reverse" : "")}>
-                    <Avatar className="w-8 h-8 mt-1 shrink-0">
-                      <AvatarImage src={sender?.avatar} />
+                  <div
+                    key={msg.id}
+                    className={cn('group flex gap-4', isMe ? 'flex-row-reverse' : '')}
+                  >
+                    <Avatar className="mt-1 h-8 w-8 shrink-0">
+                      <AvatarImage src="https://i.pravatar.cc/150?u=4" />
                       <AvatarFallback>{sender?.firstName[0]}</AvatarFallback>
                     </Avatar>
-                    <div className={cn("max-w-[80%] flex flex-col", isMe ? "items-end" : "items-start")}>
-                      <div className="relative group">
-                        <div className={cn(
-                          "p-4 rounded-2xl text-sm shadow-sm",
-                          isMe 
-                            ? "bg-primary text-white rounded-tr-none" 
-                            : "bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-tl-none"
-                        )}>
+                    <div
+                      className={cn(
+                        'flex max-w-[80%] flex-col',
+                        isMe ? 'items-end' : 'items-start'
+                      )}
+                    >
+                      <div className="group relative">
+                        <div
+                          className={cn(
+                            'rounded-2xl p-4 text-sm shadow-sm',
+                            isMe
+                              ? 'rounded-tr-none bg-primary text-white'
+                              : 'rounded-tl-none border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900'
+                          )}
+                        >
                           {msg.text}
                         </div>
                         {isMe && (
-                          <button 
+                          <button
                             onClick={() => handleDeleteMessage(msg.id)}
-                            className="absolute -left-8 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                            className="absolute top-1/2 -left-8 -translate-y-1/2 p-1.5 text-slate-400 opacity-0 transition-all group-hover:opacity-100 hover:text-rose-500"
                             title="Delete message"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         )}
                       </div>
-                      <p className="text-[10px] font-medium text-slate-400 mt-1 px-1">
-                        {sender?.firstName} • {formatDate(msg.timestamp)} {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      <p className="mt-1 px-1 text-[10px] font-medium text-slate-400">
+                        {sender?.firstName} • {formatDate(msg.timestamp)}{' '}
+                        {new Date(msg.timestamp).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
                       </p>
                     </div>
                   </div>
@@ -251,22 +407,28 @@ export default function TicketDetail() {
               })}
             </div>
 
-            <Card className="border-none shadow-lg bg-white dark:bg-slate-900 mt-8">
+            <Card className="mt-8 border-none bg-white shadow-lg dark:bg-slate-900">
               <CardContent className="p-4">
+                {/* Ensure handleSendMessage is the async version we wrote */}
                 <form onSubmit={handleSendMessage} className="space-y-4">
                   <div className="relative">
-                    <textarea 
-                      className="w-full min-h-[100px] bg-slate-50 dark:bg-slate-800 border-none rounded-xl p-4 text-sm focus:ring-2 focus:ring-primary/20 resize-none"
+                    <textarea
+                      className="min-h-[100px] w-full resize-none rounded-xl border-none bg-slate-50 p-4 text-sm placeholder:text-slate-500/40 placeholder:italic focus:ring-2 focus:ring-primary/20 dark:bg-slate-800"
                       placeholder="Type your message or internal note..."
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
+                      /* Update these to match the state 'messageText' */
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      required
                     />
-                    <div className="absolute bottom-3 right-3 flex items-center gap-2">
-                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
-                        <Paperclip className="w-4 h-4" />
-                      </Button>
-                      <Button type="submit" size="sm" className="h-8 gap-2 font-bold">
-                        <Send className="w-3.5 h-3.5" />
+                    <div className="absolute right-3 bottom-3 flex items-center gap-2">
+                      {/* type="submit" triggers the form's onSubmit */}
+                      <Button
+                        type="submit"
+                        size="sm"
+                        className="h-8 gap-2 font-bold"
+                        disabled={!messageText.trim()} // Visual feedback
+                      >
+                        <Send className="h-3.5 w-3.5" />
                         Send
                       </Button>
                     </div>
@@ -278,34 +440,36 @@ export default function TicketDetail() {
         </div>
 
         <div className="space-y-6">
-          <Card className="border-none shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
-            <CardHeader className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 py-4">
-              <CardTitle className="text-sm font-black uppercase tracking-wider">Ticket Metadata</CardTitle>
+          <Card className="overflow-hidden border-none bg-white shadow-sm dark:bg-slate-900">
+            <CardHeader className="border-b border-slate-100 bg-slate-50 py-4 dark:border-slate-800 dark:bg-slate-800/50">
+              <CardTitle className="text-sm font-black tracking-wider uppercase">
+                Ticket Metadata
+              </CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-6">
+            <CardContent className="space-y-6 p-6">
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-slate-500">
-                    <CheckCircle2 className="w-4 h-4" />
+                    <CheckCircle2 className="h-4 w-4" />
                     <span className="text-xs font-medium">Status</span>
                   </div>
                   {getStatusBadge(ticket.status)}
                 </div>
 
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-slate-500">
-                    <Tag className="w-4 h-4" />
+                    <Tag className="h-4 w-4" />
                     <span className="text-xs font-medium">Category</span>
                   </div>
-                  <span className="text-xs font-bold">{category?.name}</span>
+                  <span className="text-xs font-bold">{ticket.category.name}</span>
                 </div>
 
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-slate-500">
-                    <Clock className="w-4 h-4" />
-                    <span className="text-xs font-medium">SLA Deadline</span>
+                    <Clock className="h-4 w-4" />
+                    <span className="text-xs font-medium">Resolved on</span>
                   </div>
-                  <span className="text-xs font-bold text-rose-500">4h 12m</span>
+                  <span className="text-xs font-bold">{formatDate(ticket.resolvedDate)}</span>
                 </div>
               </div>
 
@@ -313,28 +477,30 @@ export default function TicketDetail() {
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Assigned Agent</p>
-                  {user?.role === 'ADMIN' && (
+                  <p className="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+                    Assigned Agent
+                  </p>
+                  {role === 'ADMIN' && (
                     <div className="flex items-center gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-7 px-2 text-[10px] font-black uppercase tracking-wider text-primary hover:text-primary hover:bg-primary/5"
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-[10px] font-black tracking-wider text-primary uppercase hover:bg-primary/5 hover:text-primary"
                         onClick={handleAutoAssign}
                       >
-                        <Sparkles className="w-3 h-3 mr-1" />
+                        <Sparkles className="mr-1 h-3 w-3" />
                         Auto
                       </Button>
-                      
+
                       <Popover open={isAssignPopoverOpen} onOpenChange={setIsAssignPopoverOpen}>
                         <PopoverTrigger
                           render={
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-7 px-2 text-[10px] font-black uppercase tracking-wider text-primary hover:text-primary hover:bg-primary/5"
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-[10px] font-black tracking-wider text-primary uppercase hover:bg-primary/5 hover:text-primary"
                             >
-                              <UserPlus className="w-3 h-3 mr-1" />
+                              <UserPlus className="mr-1 h-3 w-3" />
                               Manual
                             </Button>
                           }
@@ -345,20 +511,24 @@ export default function TicketDetail() {
                             <CommandList>
                               <CommandEmpty>No agent found.</CommandEmpty>
                               <CommandGroup>
-                                {MOCK_USERS.filter(u => u.role === 'SUPPORT_AGENT').map((a) => (
+                                {agents.map((a) => (
                                   <CommandItem
                                     key={a.id}
                                     onSelect={() => handleManualAssign(a.id)}
                                     className="flex items-center gap-2"
                                   >
-                                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold">
+                                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold">
                                       {a.firstName[0]}
                                     </div>
-                                    <span className="text-xs font-medium">{a.firstName} {a.lastName}</span>
+                                    <span className="text-xs font-medium">
+                                      {a.firstName} {a.lastName}
+                                    </span>
                                     <Check
                                       className={cn(
-                                        "ml-auto h-4 w-4",
-                                        ticket.assignedAgent === a.id ? "opacity-100" : "opacity-0"
+                                        'ml-auto h-4 w-4',
+                                        ticket.assignedAgent === a.fullName
+                                          ? 'opacity-100'
+                                          : 'opacity-0'
                                       )}
                                     />
                                   </CommandItem>
@@ -371,23 +541,25 @@ export default function TicketDetail() {
                     </div>
                   )}
                 </div>
-                
-                {agent ? (
+
+                {ticket.assignedAgent ? (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Avatar className="w-8 h-8">
-                        <AvatarImage src={agent.avatar} />
-                        <AvatarFallback>{agent.firstName[0]}</AvatarFallback>
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src="https://i.pravatar.cc/150?u=4" />
+                        <AvatarFallback>{ticket.assignedAgent[0]}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="text-xs font-bold">{agent.firstName} {agent.lastName}</p>
-                        <p className="text-[10px] text-slate-500 uppercase font-black">Support Agent</p>
+                        <p className="text-xs font-bold">{ticket.assignedAgent}</p>
+                        <p className="text-[10px] font-black text-slate-500 uppercase">
+                          Support Agent
+                        </p>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center">
-                    <p className="text-xs text-slate-400 font-medium">No agent assigned yet</p>
+                  <div className="rounded-xl border border-dashed border-slate-200 p-4 text-center dark:border-slate-800">
+                    <p className="text-xs font-medium text-slate-400">No agent assigned yet</p>
                   </div>
                 )}
               </div>
@@ -399,63 +571,41 @@ export default function TicketDetail() {
                   <DropdownMenu>
                     <DropdownMenuTrigger
                       render={
-                        <Button className="w-full font-bold h-10 flex items-center justify-between px-4">
+                        <Button className="flex h-10 w-full items-center justify-between px-4 font-bold">
                           Change Status
-                          <ChevronDown className="w-4 h-4 ml-2" />
+                          <ChevronDown className="ml-2 h-4 w-4" />
                         </Button>
                       }
                     />
                     <DropdownMenuContent className="w-[calc(100%-2rem)] md:w-64" align="center">
                       {availableTransitions.map((t) => (
-                        <DropdownMenuItem 
-                          key={t.status} 
+                        <DropdownMenuItem
+                          key={t.status}
                           onClick={() => handleStatusChange(t.status)}
-                          className="flex items-center gap-2 py-2.5 cursor-pointer"
+                          className="flex cursor-pointer items-center gap-2 py-2.5"
                         >
-                          <t.icon className={cn("w-4 h-4", t.color)} />
-                          <span className="font-bold text-sm">{t.label}</span>
+                          <t.icon className={cn('h-4 w-4', t.color)} />
+                          <span className="text-sm font-bold">{t.label}</span>
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : (
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No Actions Available</p>
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center dark:border-slate-800 dark:bg-slate-800/50">
+                    <p className="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+                      No Actions Available
+                    </p>
                   </div>
                 )}
-                
-                {user?.role === 'ADMIN' && (
-                  <Button variant="outline" className="w-full font-bold h-10 border-slate-200 text-slate-600 hover:bg-slate-50">
+
+                {role === 'ADMIN' && (
+                  <Button
+                    variant="outline"
+                    className="h-10 w-full border-slate-200 font-bold text-slate-600 hover:bg-slate-50"
+                  >
                     Transfer Case
                   </Button>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
-            <CardHeader className="py-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <History className="w-4 h-4 text-slate-400" />
-                <CardTitle className="text-sm font-black uppercase tracking-wider">Audit Trail</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="space-y-4">
-                {[
-                  { action: 'Status changed to In Progress', time: '2h ago', user: 'Mark J.' },
-                  { action: 'Agent assigned', time: '2h ago', user: 'System' },
-                  { action: 'Ticket created', time: '3h ago', user: 'Elena R.' },
-                ].map((log, i) => (
-                  <div key={i} className="flex gap-3 relative">
-                    {i !== 2 && <div className="absolute left-[7px] top-4 bottom-[-16px] w-[1px] bg-slate-100 dark:bg-slate-800" />}
-                    <div className="w-3.5 h-3.5 rounded-full bg-slate-200 dark:bg-slate-700 mt-1 shrink-0" />
-                    <div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100">{log.action}</p>
-                      <p className="text-[10px] text-slate-500">{log.user} • {log.time}</p>
-                    </div>
-                  </div>
-                ))}
               </div>
             </CardContent>
           </Card>

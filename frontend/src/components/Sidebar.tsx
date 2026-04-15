@@ -17,14 +17,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUI } from '@/contexts/UIContext';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { getUserRole } from '../auth/authService';
+import { getUserRole, logout } from '../auth/authService';
 
 export const Sidebar = () => {
-  const { user, logout } = useAuth(); // Assuming user object contains the role
   const role = getUserRole();
   const location = useLocation();
   const navigate = useNavigate();
   const { sidebarCollapsed, toggleSidebar } = useUI();
+
+  const handleLogout = async () => {
+    const res = await logout();
+    navigate('/login');
+  };
 
   const navItems = [
     {
@@ -53,9 +57,7 @@ export const Sidebar = () => {
 
   const filteredItems = navItems.filter((item) => {
     if (!role) return false;
-    const userRole = role.toUpperCase().trim();
-
-    return item.roles.includes(userRole);
+    return item.roles.includes(role);
   });
   return (
     <aside
@@ -137,7 +139,7 @@ export const Sidebar = () => {
               render={
                 <Button
                   variant="ghost"
-                  onClick={logout}
+                  onClick={handleLogout}
                   className={cn(
                     'w-full justify-start text-slate-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20',
                     sidebarCollapsed ? 'mx-auto h-10 w-10 justify-center p-0' : 'gap-3'

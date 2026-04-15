@@ -101,12 +101,13 @@ export interface AssignTicketRequest {
   agentId: number;
 }
 
+export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
 export interface TicketResponse {
   id: number;
   title: string;
   description: string;
   priority: number;
-  priorityLabel: string;
   status: TicketStatus;
   createdDate: string;
   resolvedDate?: string;
@@ -114,6 +115,27 @@ export interface TicketResponse {
   createdBy: string;
   assignedAgent?: string;
 }
+
+export const mapPriorityNumberToString = (p: number): TicketPriority => {
+  const mapping: Record<number, TicketPriority> = {
+    1: 'LOW',
+    2: 'MEDIUM',
+    3: 'HIGH',
+    4: 'CRITICAL',
+  };
+  return mapping[p] || 'MEDIUM';
+};
+
+// Map String -> Number (for Form Submission)
+export const mapPriorityStringToNumber = (p: TicketPriority): number => {
+  const mapping: Record<TicketPriority, number> = {
+    LOW: 1,
+    MEDIUM: 2,
+    HIGH: 3,
+    CRITICAL: 4,
+  };
+  return mapping[p] || 2;
+};
 
 // --- Message Types ---
 export interface CreateMessageRequest {
