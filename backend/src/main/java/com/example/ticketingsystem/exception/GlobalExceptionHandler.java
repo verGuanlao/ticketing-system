@@ -66,6 +66,13 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnauthorizedException(UnauthorizedException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error(ex.getMessage()));
+
+    }
+
     @ExceptionHandler(InvalidOperationException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidOperation(InvalidOperationException ex) {
         log.warn("Invalid operation: {}", ex.getMessage());

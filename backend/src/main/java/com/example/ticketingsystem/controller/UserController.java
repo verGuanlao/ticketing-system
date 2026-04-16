@@ -1,9 +1,12 @@
 package com.example.ticketingsystem.controller;
 
+import com.example.ticketingsystem.component.MessageUtil;
 import com.example.ticketingsystem.dto.request.CreateUserRequest;
 import com.example.ticketingsystem.dto.response.ApiResponse;
 import com.example.ticketingsystem.dto.response.UserResponse;
 import com.example.ticketingsystem.model.enums.Role;
+import com.example.ticketingsystem.model.enums.Status;
+import com.example.ticketingsystem.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,40 +28,60 @@ import java.util.List;
 @SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
+    private final UserService userService;
+    private final MessageUtil messageUtil;
 
     @GetMapping("/me")
-    @Operation(summary = "Get current user", description = "Returns the logged in user's profile.")
+    @Operation(summary = "Get current user", description = "Returns the authenticated user's profile.")
     public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(
             @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        UserResponse user = userService.getCurrentUser(userDetails.getUsername());
+        return ResponseEntity.ok(ApiResponse.success(messageUtil.get("success.user.fetched"), user));
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get user by ID", description = "Returns a user by ID. Admins can fetch any user.")
     @PreAuthorize("hasRole('ADMIN') or authentication.name == @userRepository.findById(#id).orElse(null)?.email")
+    @Operation(summary = "Get user by ID", description = "Returns a user by ID. Admins can fetch any user.")
     public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable Long id) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        UserResponse user = userService.getUserById(id);
+        return ResponseEntity.ok(ApiResponse.success(messageUtil.get("success.user.fetched"), user));
     }
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get all users", description = "Returns all users. Admin only.")
     public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers() {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        List<UserResponse> users = userService.getAllUsers();
+        return ResponseEntity.ok(ApiResponse.success(messageUtil.get("success.user.list.fetched"), users));
     }
 
     @GetMapping("/role/{role}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get users by role", description = "Returns all users with the specified role. Admin only.")
     public ResponseEntity<ApiResponse<List<UserResponse>>> getUsersByRole(@PathVariable Role role) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        List<UserResponse> users = userService.getUsersByRole(role);
+        return ResponseEntity.ok(ApiResponse.success(messageUtil.get("success.user.list.fetched"), users));
     }
 
-    @PostMapping
+    @PostMapping("")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Add new user", description = "Add a new user with designated role. Admin only.")
-    public ResponseEntity<ApiResponse<UserResponse>> createUser(@Valid @RequestBody CreateUserRequest request) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    @Operation(summary = "Create user", description = "Create a user. Admin only.")
+    public ResponseEntity<ApiResponse<UserResponse>> updateUser(
+            @Valid @RequestBody CreateUserRequest request) {
+        UserResponse user = userService.createUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(messageUtil.get("success.user.created"), user));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Change user status", description = "Change user status to active or inactive. Admin only.")
+    public ResponseEntity<ApiResponse<UserResponse>> changeUserStatus(
+            @PathVariable Long id,
+            @Valid @RequestParam Status status) {
+        UserResponse user = userService.changeUserStatus(id, status);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(messageUtil.get("success.user.updated"), user));
     }
 
     @DeleteMapping("/{id}")
@@ -67,7 +90,8 @@ public class UserController {
     public ResponseEntity<ApiResponse<Void>> deleteUser(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        userService.deleteUser(id, userDetails.getUsername());
+        return ResponseEntity.ok(ApiResponse.success(messageUtil.get("success.user.deleted")));
     }
 
     @GetMapping("/max-workload")

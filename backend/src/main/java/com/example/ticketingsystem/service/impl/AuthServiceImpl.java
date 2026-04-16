@@ -7,6 +7,7 @@ import com.example.ticketingsystem.dto.request.RegisterRequest;
 import com.example.ticketingsystem.dto.response.AuthResponse;
 import com.example.ticketingsystem.exception.DuplicateResourceException;
 import com.example.ticketingsystem.exception.ResourceNotFoundException;
+import com.example.ticketingsystem.exception.UnauthorizedException;
 import com.example.ticketingsystem.model.User;
 import com.example.ticketingsystem.model.enums.Role;
 import com.example.ticketingsystem.model.enums.Status;
@@ -75,8 +76,11 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageUtil.get("error.user.email.not.found", request.getEmail())));
 
+        // Check if user is active
+        if (user.getStatus() != Status.ACTIVE) {
+            throw new UnauthorizedException(messageUtil.get("error.user.inactive"));
+        }
 
-        userRepository.save(user);
         String token = jwtService.generateToken(user.getEmail(), user.getRole().name());
         log.info("User logged in: {}", user.getEmail());
         return buildAuthResponse(user, token);
