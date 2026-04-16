@@ -194,7 +194,14 @@ export default function TicketDetail() {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center">
         <h2 className="mb-4 text-2xl font-bold">Ticket Not Found</h2>
-        <Button onClick={() => navigate('/tickets')}>Back to Repository</Button>
+        <Button
+          onClick={() => {
+            localStorage.getItem('assigned') ? navigate('/assigned') : navigate('/tickets');
+            localStorage.removeItem('assigned');
+          }}
+        >
+          Back to Repository
+        </Button>
       </div>
     );
   }
@@ -240,6 +247,23 @@ export default function TicketDetail() {
       default:
         return null;
     }
+  };
+
+  const getPriorityBadge = (priority: number) => {
+    const priorityMap: Record<number, { label: string; className: string }> = {
+      0: { label: 'LOW', className: 'bg-slate-100 text-slate-600 border-slate-200' },
+      1: { label: 'MEDIUM', className: 'bg-blue-100 text-blue-600 border-blue-200' },
+      2: { label: 'HIGH', className: 'bg-orange-100 text-orange-600 border-orange-200' },
+      3: { label: 'CRITICAL', className: 'bg-rose-100 text-rose-600 border-rose-200' },
+    };
+
+    const { label, className } = priorityMap[priority] || priorityMap[0];
+
+    return (
+      <Badge variant="outline" className={cn('h-5 px-2 py-0 text-[10px] font-black', className)}>
+        {label}
+      </Badge>
+    );
   };
 
   const availableTransitions = (() => {
@@ -302,7 +326,10 @@ export default function TicketDetail() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate('/tickets')}
+          onClick={() => {
+            localStorage.getItem('assigned') ? navigate('/assigned') : navigate('/tickets');
+            localStorage.removeItem('assigned');
+          }}
           className="rounded-full"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -310,14 +337,6 @@ export default function TicketDetail() {
         <div>
           <div className="mb-1 flex items-center gap-3">
             <span className="font-mono text-xs text-slate-400">TICKET-#{ticket.id}</span>
-            <Badge
-              className={cn(
-                'px-2 text-[10px] font-black uppercase',
-                ticket.priority === 4 ? 'bg-rose-500' : 'bg-blue-500'
-              )}
-            >
-              {ticket.priority}
-            </Badge>
           </div>
           <h1 className="text-2xl font-black tracking-tight">{ticket.title}</h1>
         </div>
@@ -330,11 +349,11 @@ export default function TicketDetail() {
               <div className="mb-4 flex items-center gap-3">
                 <Avatar className="h-10 w-10">
                   {/* TO DO: change avatar url */}
-                  <AvatarImage src="https://i.pravatar.cc/150?u=4" />
+                  <AvatarImage src="" />
                   <AvatarFallback>{ticket.createdBy[0]}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm font-bold">{ticket.createdBy[0]}</p>
+                  <p className="text-sm font-bold">{ticket.createdBy}</p>
                   <p className="text-xs text-slate-500">
                     Reported on {formatDate(ticket.createdDate)}
                   </p>
@@ -364,7 +383,7 @@ export default function TicketDetail() {
                     className={cn('group flex gap-4', isMe ? 'flex-row-reverse' : '')}
                   >
                     <Avatar className="mt-1 h-8 w-8 shrink-0">
-                      <AvatarImage src="https://i.pravatar.cc/150?u=4" />
+                      <AvatarImage src="" />
                       <AvatarFallback>{sender?.firstName[0]}</AvatarFallback>
                     </Avatar>
                     <div
@@ -409,7 +428,6 @@ export default function TicketDetail() {
 
             <Card className="mt-8 border-none bg-white shadow-lg dark:bg-slate-900">
               <CardContent className="p-4">
-                {/* Ensure handleSendMessage is the async version we wrote */}
                 <form onSubmit={handleSendMessage} className="space-y-4">
                   <div className="relative">
                     <textarea
@@ -421,12 +439,11 @@ export default function TicketDetail() {
                       required
                     />
                     <div className="absolute right-3 bottom-3 flex items-center gap-2">
-                      {/* type="submit" triggers the form's onSubmit */}
                       <Button
                         type="submit"
                         size="sm"
                         className="h-8 gap-2 font-bold"
-                        disabled={!messageText.trim()} // Visual feedback
+                        disabled={!messageText.trim()}
                       >
                         <Send className="h-3.5 w-3.5" />
                         Send
@@ -443,11 +460,12 @@ export default function TicketDetail() {
           <Card className="overflow-hidden border-none bg-white shadow-sm dark:bg-slate-900">
             <CardHeader className="border-b border-slate-100 bg-slate-50 py-4 dark:border-slate-800 dark:bg-slate-800/50">
               <CardTitle className="text-sm font-black tracking-wider uppercase">
-                Ticket Metadata
+                Ticket Details
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 p-6">
               <div className="space-y-4">
+                {/* Status Row */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-slate-500">
                     <CheckCircle2 className="h-4 w-4" />
@@ -456,6 +474,16 @@ export default function TicketDetail() {
                   {getStatusBadge(ticket.status)}
                 </div>
 
+                {/* Priority Row - NEW */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="text-xs font-medium">Priority</span>
+                  </div>
+                  {getPriorityBadge(ticket.priority)}
+                </div>
+
+                {/* Category Row */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-slate-500">
                     <Tag className="h-4 w-4" />
@@ -464,6 +492,7 @@ export default function TicketDetail() {
                   <span className="text-xs font-bold">{ticket.category.name}</span>
                 </div>
 
+                {/* Resolved Date Row */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-slate-500">
                     <Clock className="h-4 w-4" />
@@ -546,7 +575,7 @@ export default function TicketDetail() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src="https://i.pravatar.cc/150?u=4" />
+                        <AvatarImage src="" />
                         <AvatarFallback>{ticket.assignedAgent[0]}</AvatarFallback>
                       </Avatar>
                       <div>

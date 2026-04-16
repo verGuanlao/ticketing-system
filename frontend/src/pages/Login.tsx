@@ -51,26 +51,6 @@ export default function Login() {
               Enter the Precise <br />
               Monolith.
             </h1>
-            <p className="max-w-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              Access the industry's most authoritative support desk environment. Designed for
-              clarity, built for speed.
-            </p>
-          </div>
-
-          <div className="relative z-10">
-            <div className="mb-4 flex -space-x-3">
-              {[1, 2, 3].map((i) => (
-                <img
-                  key={i}
-                  className="h-10 w-10 rounded-full border-2 border-slate-100 dark:border-slate-800"
-                  src={`https://i.pravatar.cc/150?u=${i + 10}`}
-                  alt="User"
-                />
-              ))}
-            </div>
-            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-              Joined by over 10,000+ support professionals today.
-            </p>
           </div>
 
           <div className="absolute top-0 right-0 -mt-32 -mr-32 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
@@ -105,9 +85,6 @@ export default function Login() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <a href="#" className="text-xs font-semibold text-primary hover:underline">
-                  Forgot password?
-                </a>
               </div>
               <div className="relative">
                 <Lock className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />

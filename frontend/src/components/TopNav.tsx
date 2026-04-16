@@ -48,15 +48,7 @@ export const TopNav = () => {
       </div>
 
       <div className="flex items-center gap-4">
-        <button className="p-2 text-slate-500 transition-all hover:text-slate-950 dark:hover:text-white">
-          <Bell className="h-5 w-5" />
-        </button>
-        <button className="p-2 text-slate-500 transition-all hover:text-slate-950 dark:hover:text-white">
-          <HelpCircle className="h-5 w-5" />
-        </button>
-
         <div className="mx-2 h-8 w-px bg-slate-200 dark:bg-slate-800" />
-
         <Link to="/profile" className="flex items-center gap-3 transition-opacity hover:opacity-80">
           <div className="hidden text-right sm:block">
             <p className="text-xs leading-none font-bold text-slate-950 dark:text-white">

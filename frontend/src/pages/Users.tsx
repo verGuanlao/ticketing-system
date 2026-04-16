@@ -49,8 +49,10 @@ import {
 import { cn } from '@/lib/utils';
 import { Pagination } from '@/components/Pagination';
 import { toast } from 'sonner';
+import { getUsername } from '@/auth/tokenUtils';
 
 export default function Users() {
+  const currentEmail = getUsername();
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -215,53 +217,68 @@ export default function Users() {
       </div>
 
       <div className="flex flex-wrap items-center gap-6">
-        <div className="relative w-full max-w-xs">
-          <Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-          <Input
-            placeholder="Search users..."
-            className="pl-9"
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-          />
+        <div className="space-y-1.5">
+          <Label className="ml-1 text-[10px] font-black tracking-widest text-slate-400 uppercase">
+            Search Users
+          </Label>
+          <div className="relative w-full max-w-xs">
+            <Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="Search users..."
+              className="pl-9"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
         </div>
 
-        <Select
-          value={roleFilter}
-          onValueChange={(v: any) => {
-            setRoleFilter(v);
-            setCurrentPage(1);
-          }}
-        >
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Roles</SelectItem>
-            <SelectItem value="ADMIN">Admin</SelectItem>
-            <SelectItem value="SUPPORT_AGENT">Agent</SelectItem>
-            <SelectItem value="CLIENT">Client</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="space-y-1.5">
+          <Label className="ml-1 text-[10px] font-black tracking-widest text-slate-400 uppercase">
+            Role Filter
+          </Label>
+          <Select
+            value={roleFilter}
+            onValueChange={(v: any) => {
+              setRoleFilter(v);
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Roles</SelectItem>
+              <SelectItem value="ADMIN">Admin</SelectItem>
+              <SelectItem value="SUPPORT_AGENT">Agent</SelectItem>
+              <SelectItem value="CLIENT">Client</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-        <Select
-          value={statusFilter}
-          onValueChange={(v: any) => {
-            setStatusFilter(v);
-            setCurrentPage(1);
-          }}
-        >
-          <SelectTrigger className="w-[130px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Status</SelectItem>
-            <SelectItem value="ACTIVE">Active</SelectItem>
-            <SelectItem value="INACTIVE">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="space-y-1.5">
+          <Label className="ml-1 text-[10px] font-black tracking-widest text-slate-400 uppercase">
+            Status Filter
+          </Label>
+          <Select
+            value={statusFilter}
+            onValueChange={(v: any) => {
+              setStatusFilter(v);
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[130px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Status</SelectItem>
+              <SelectItem value="ACTIVE">Active</SelectItem>
+              <SelectItem value="INACTIVE">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <Card className="overflow-hidden border-none bg-white shadow-sm dark:bg-slate-900">
@@ -327,11 +344,24 @@ export default function Users() {
                         }
                       />
                       <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem onClick={() => handleToggleStatus(user.id, user.status)}>
+                        <DropdownMenuItem
+                          disabled={user.email === currentEmail}
+                          onClick={() => handleToggleStatus(user.id, user.status)}
+                        >
                           {user.status === 'ACTIVE' ? (
-                            <>
-                              <PowerOff className="mr-2 h-4 w-4 text-rose-500" /> Deactivate
-                            </>
+                            user.email === currentEmail ? (
+                              <>
+                                <PowerOff className="mr-2 h-4 w-4 text-rose-500" />
+                                <span className="flex items-center text-xs font-medium text-rose-400 italic">
+                                  Cannot deactivate own account
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <PowerOff className="mr-2 h-4 w-4 text-rose-500" />
+                                Deactivate
+                              </>
+                            )
                           ) : (
                             <>
                               <Power className="mr-2 h-4 w-4 text-emerald-500" /> Activate

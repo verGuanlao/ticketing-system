@@ -42,7 +42,14 @@ export default function Dashboard() {
         ]);
 
         if (reportRes.success) setReport(reportRes.data);
-        if (pendingRes.success) setPendingTickets(pendingRes.data.slice(0, 5));
+
+        // Sort by date (descending) before slicing the top 5
+        if (pendingRes.success) {
+          const sortedPending = [...pendingRes.data].sort(
+            (a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime()
+          );
+          setPendingTickets(sortedPending.slice(0, 5));
+        }
 
         // Calculate volume for the chart
         if (allTicketsRes.success) {
@@ -141,7 +148,9 @@ export default function Dashboard() {
         <Card className="border-none bg-white shadow-sm lg:col-span-2 dark:bg-slate-900">
           <CardHeader>
             <CardTitle>Ticket Volume</CardTitle>
-            <CardDescription>Daily incoming ticket distribution</CardDescription>
+            <CardDescription>
+              Daily incoming ticket distribution for the past 7 days
+            </CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -175,24 +184,68 @@ export default function Dashboard() {
             <CardDescription>Recently made pending tickets</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {pendingTickets.map((ticket) => (
-              <div key={ticket.id} className="group flex cursor-pointer gap-4">
-                <div className="mt-1 h-12 w-1 rounded-full bg-amber-500" />
-                <div className="flex-1">
-                  <div className="mb-1 flex items-start justify-between">
-                    <h4 className="line-clamp-1 text-sm font-bold text-slate-950 transition-colors group-hover:text-primary dark:text-white">
-                      {ticket.title}
-                    </h4>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-[10px]">
-                      #{ticket.id}
-                    </Badge>
-                    <Badge className="bg-amber-100 text-[10px] text-amber-700">PENDING</Badge>
+            {pendingTickets.map((ticket) => {
+              // Priority Logic
+              const priorityLabels: Record<number, string> = {
+                0: 'LOW',
+                1: 'MEDIUM',
+                2: 'HIGH',
+                3: 'CRITICAL',
+              };
+
+              const priorityLabel = priorityLabels[ticket.priority] || 'LOW';
+
+              return (
+                <div key={ticket.id} className="group flex cursor-pointer gap-4">
+                  {/* Dynamic Indicator Stripe based on Priority */}
+                  <div
+                    className={cn(
+                      'mt-1 h-12 w-1 rounded-full transition-colors',
+                      ticket.priority === 3
+                        ? 'bg-rose-500'
+                        : ticket.priority === 2
+                          ? 'bg-orange-500'
+                          : ticket.priority === 1
+                            ? 'bg-blue-500'
+                            : 'bg-slate-300'
+                    )}
+                  />
+
+                  <div className="flex-1">
+                    <div className="mb-1 flex items-start justify-between">
+                      <h4 className="line-clamp-1 text-sm font-bold text-slate-950 transition-colors group-hover:text-primary dark:text-white">
+                        {ticket.title}
+                      </h4>
+                      {/* Date Display */}
+                      <span className="ml-2 text-[10px] font-medium whitespace-nowrap text-slate-400">
+                        {formatDate(ticket.createdDate)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="font-mono text-[10px]">
+                        #{ticket.id}
+                      </Badge>
+
+                      {/* Priority Badge */}
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'border-none px-1.5 text-[10px] font-black',
+                          ticket.priority === 3
+                            ? 'bg-rose-50 text-rose-600'
+                            : ticket.priority === 2
+                              ? 'bg-orange-50 text-orange-600'
+                              : 'bg-slate-50 text-slate-600'
+                        )}
+                      >
+                        {priorityLabel}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
       </div>

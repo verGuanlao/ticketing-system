@@ -63,7 +63,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { cn, formatDate } from '@/lib/utils';
+import { cn, formatDate, mapPriorityNumberToString, mapPriorityStringToNumber } from '@/lib/utils';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { Pagination } from '@/components/Pagination';
 import { toast } from 'sonner';
@@ -80,6 +80,7 @@ import {
   CategoryResponse,
   TicketResponse,
   TicketStatus,
+  TicketPriority,
   Role,
   UserResponse,
   ApiResponse,
@@ -96,6 +97,7 @@ export default function TicketList() {
   const [agents, setAgents] = useState<UserResponse[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [sortOrder, setSortOrder] = useState<'NEWEST' | 'OLDEST'>('NEWEST');
   const [currentPage, setCurrentPage] = useState(1);
@@ -136,6 +138,7 @@ export default function TicketList() {
 
   useEffect(() => {
     fetchData();
+    localStorage.removeItem('assigned');
   }, [location.pathname]);
 
   const filteredTickets = tickets.filter((t) => {
@@ -149,8 +152,11 @@ export default function TicketList() {
 
     const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter;
     const matchesCategory = categoryFilter === 'ALL' || t.category?.name === categoryFilter;
+    const matchesPriority =
+      priorityFilter === 'ALL' ||
+      t.priority === mapPriorityStringToNumber(priorityFilter as TicketPriority);
 
-    return matchesSearch && matchesStatus && matchesCategory;
+    return matchesSearch && matchesStatus && matchesCategory && matchesPriority;
   });
 
   const sortedTickets = [...filteredTickets].sort((a, b) => {
@@ -245,6 +251,15 @@ export default function TicketList() {
 
   const getStatusBadge = (status: TicketStatus) => {
     switch (status) {
+      case 'PENDING':
+        return (
+          <Badge
+            variant="outline"
+            className="border-amber-500 px-2 text-[10px] font-black text-amber-600 uppercase"
+          >
+            Pending
+          </Badge>
+        );
       case 'OPEN':
         return (
           <Badge
@@ -319,6 +334,30 @@ export default function TicketList() {
 
             <div className="space-y-1.5">
               <Label className="ml-1 text-[10px] font-black tracking-widest text-slate-400 uppercase">
+                Priority
+              </Label>
+              <Select
+                value={priorityFilter}
+                onValueChange={(v) => {
+                  setPriorityFilter(v);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="h-10 w-[130px] border-none bg-slate-50 text-xs font-bold dark:bg-slate-800">
+                  <SelectValue placeholder="Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All</SelectItem>
+                  <SelectItem value="LOW">Low</SelectItem>
+                  <SelectItem value="MEDIUM">Medium</SelectItem>
+                  <SelectItem value="HIGH">High</SelectItem>
+                  <SelectItem value="CRITICAL">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="ml-1 text-[10px] font-black tracking-widest text-slate-400 uppercase">
                 Status
               </Label>
               <Select
@@ -333,6 +372,7 @@ export default function TicketList() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All Statuses</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
                   <SelectItem value="OPEN">Open</SelectItem>
                   <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
                   <SelectItem value="RESOLVED">Resolved</SelectItem>
@@ -432,7 +472,11 @@ export default function TicketList() {
                 <TableRow
                   key={ticket.id}
                   className="cursor-pointer border-slate-100 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
-                  onClick={() => navigate(`/tickets/${ticket.id}`)}
+                  onClick={() => {
+                    navigate(`/tickets/${ticket.id}`);
+                    if (isAssignedPage)
+                      localStorage.setItem('assigned', JSON.stringify(isAssignedPage));
+                  }}
                 >
                   <TableCell className="px-3 py-3 font-mono text-[10px] text-slate-400">
                     #{ticket.id}
@@ -503,7 +547,13 @@ export default function TicketList() {
                         }
                       />
                       <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem onClick={() => navigate(`/tickets/${ticket.id}`)}>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            navigate(`/tickets/${ticket.id}`);
+                            if (isAssignedPage)
+                              localStorage.setItem('assigned', JSON.stringify(isAssignedPage));
+                          }}
+                        >
                           <Eye className="mr-2 h-4 w-4" /> View Details
                         </DropdownMenuItem>
 
@@ -564,61 +614,62 @@ export default function TicketList() {
                           </>
                         )}
 
-                        {role === 'ADMIN' && (
-                          <>
-                            {!ticket.assignedAgent && (
+                        {role === 'ADMIN' &&
+                          (ticket.status === 'OPEN' ||
+                            ticket.status === 'PENDING' ||
+                            ticket.status === 'IN_PROGRESS') && (
+                            <>
                               <DropdownMenuItem onClick={() => handleAutoAssign(ticket.id)}>
                                 <Sparkles className="mr-2 h-4 w-4 text-primary" /> Auto Assign
                               </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSub>
-                              <DropdownMenuSubTrigger>
-                                <UserPlus className="mr-2 h-4 w-4" /> Reassign Agent
-                              </DropdownMenuSubTrigger>
-                              <DropdownMenuSubContent className="w-[200px] p-0" align="end">
-                                <Command>
-                                  <CommandInput placeholder="Search agents..." autoFocus />
-                                  <CommandList>
-                                    <CommandEmpty>No agents found.</CommandEmpty>
-                                    <CommandGroup>
-                                      {agents.map((agent) => (
-                                        <CommandItem
-                                          key={agent.id}
-                                          onSelect={() => handleReassign(ticket.id, agent.id)}
-                                          className="flex items-center gap-2"
-                                        >
-                                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold">
-                                            {agent.firstName[0]}
-                                          </div>
-                                          <span className="text-xs font-medium">
-                                            {agent.firstName} {agent.lastName}
-                                          </span>
-                                          <Check
-                                            className={cn(
-                                              'ml-auto h-4 w-4',
-                                              ticket.assignedAgent === agent.fullName
-                                                ? 'opacity-100'
-                                                : 'opacity-0'
-                                            )}
-                                          />
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </CommandList>
-                                </Command>
-                              </DropdownMenuSubContent>
-                            </DropdownMenuSub>
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>
+                                  <UserPlus className="mr-2 h-4 w-4" /> Reassign Agent
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent className="w-[200px] p-0" align="end">
+                                  <Command>
+                                    <CommandInput placeholder="Search agents..." autoFocus />
+                                    <CommandList>
+                                      <CommandEmpty>No agents found.</CommandEmpty>
+                                      <CommandGroup>
+                                        {agents.map((agent) => (
+                                          <CommandItem
+                                            key={agent.id}
+                                            onSelect={() => handleReassign(ticket.id, agent.id)}
+                                            className="flex items-center gap-2"
+                                          >
+                                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold">
+                                              {agent.firstName[0]}
+                                            </div>
+                                            <span className="text-xs font-medium">
+                                              {agent.firstName} {agent.lastName}
+                                            </span>
+                                            <Check
+                                              className={cn(
+                                                'ml-auto h-4 w-4',
+                                                ticket.assignedAgent === agent.fullName
+                                                  ? 'opacity-100'
+                                                  : 'opacity-0'
+                                              )}
+                                            />
+                                          </CommandItem>
+                                        ))}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
 
-                            {ticket.status === 'CLOSED' && (
-                              <DropdownMenuItem
-                                className="text-rose-600"
-                                onClick={() => handleDelete(ticket.id)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete Ticket
-                              </DropdownMenuItem>
-                            )}
-                          </>
-                        )}
+                              {ticket.status === 'CLOSED' && (
+                                <DropdownMenuItem
+                                  className="text-rose-600"
+                                  onClick={() => handleDelete(ticket.id)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete Ticket
+                                </DropdownMenuItem>
+                              )}
+                            </>
+                          )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

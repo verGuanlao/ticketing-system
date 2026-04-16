@@ -168,11 +168,15 @@ export default function Agents() {
             </p>
             <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-3 py-1">
               <Settings2 className="h-3.5 w-3.5 text-slate-500" />
-              <Label className="text-[10px] font-black text-slate-500 uppercase">Global Cap:</Label>
+              <Label className="text-[10px] font-black text-slate-500 uppercase">Global Max:</Label>
               <input
                 type="number"
                 value={maxWorkload}
-                onChange={(e) => setMaxWorkload(Number(e.target.value))}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setMaxWorkload(Math.max(1, val));
+                }}
+                min={1}
                 className="w-10 border-b border-slate-300 bg-transparent text-xs font-bold focus:outline-none"
               />
             </div>
@@ -292,9 +296,8 @@ export default function Agents() {
           </TableHeader>
           <TableBody>
             {paginatedAgents.map((item) => {
-              const workloadRatio = item.activeTickets / maxWorkload;
-              const workloadPercent = Math.min(Math.round(workloadRatio * 100), 100);
-
+              const workloadRatio = item.workload / maxWorkload;
+              const workloadPercent = Math.round(workloadRatio * 100);
               return (
                 <TableRow key={item.agent.id}>
                   <TableCell>
@@ -323,10 +326,7 @@ export default function Agents() {
                     <div className="flex flex-col items-center gap-1">
                       {/* Using your custom color function */}
                       <span
-                        className={cn(
-                          'text-[10px]',
-                          getWorkloadColor(item.activeTickets, maxWorkload)
-                        )}
+                        className={cn('text-[10px]', getWorkloadColor(item.workload, maxWorkload))}
                       >
                         {workloadPercent}%
                       </span>
@@ -342,10 +342,25 @@ export default function Agents() {
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
-                    <div className="flex justify-center gap-3 text-xs">
-                      <span className="font-bold text-blue-600">{item.activeTickets}</span>
-                      <span className="text-slate-300">/</span>
-                      <span className="font-bold text-emerald-600">{item.resolvedTickets}</span>
+                    <div className="flex items-center justify-center gap-3">
+                      <div className="text-center">
+                        <p className="text-[10px] font-bold text-slate-600">{item.totalAssigned}</p>
+                        <p className="text-[8px] font-black text-slate-400 uppercase">Asgn</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[10px] font-bold text-blue-600">{item.activeTickets}</p>
+                        <p className="text-[8px] font-black text-slate-400 uppercase">Actv</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[10px] font-bold text-emerald-600">
+                          {item.resolvedTickets}
+                        </p>
+                        <p className="text-[8px] font-black text-slate-400 uppercase">Res</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[10px] font-bold text-slate-500">{item.closedTickets}</p>
+                        <p className="text-[8px] font-black text-slate-400 uppercase">Clsd</p>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-right text-xs font-black">
