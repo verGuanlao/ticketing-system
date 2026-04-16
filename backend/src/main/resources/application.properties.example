@@ -33,6 +33,7 @@ spring.mail.password=your-app-password
 spring.mail.properties.mail.smtp.auth=true
 spring.mail.properties.mail.smtp.starttls.enable=true
 spring.mail.from=noreply@ticketingsystem.com
+spring.mail.to=test@email.com
 
 # Swagger
 springdoc.api-docs.path=/api-docs
