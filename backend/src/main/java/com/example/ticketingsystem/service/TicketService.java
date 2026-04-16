@@ -27,4 +27,5 @@ public interface TicketService {
 
     // ── Helpers ──────────────────────────────────
     Ticket getTicketEntityById(Long id);
+    Long getAgentWorkload(Long agendId);
 }

@@ -396,4 +396,10 @@ public class TicketServiceImpl implements TicketService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         messageUtil.get("error.ticket.not.found", id)));
     }
+
+    @Override
+    public Long getAgentWorkload(Long agentId) {
+        User agent = userService.getUserEntityById(agentId);
+        return ticketRepository.countActiveTicketsByAgent(agent.getId());
+    }
 }

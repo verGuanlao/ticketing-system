@@ -69,4 +69,11 @@ public class UserController {
             @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
     }
+
+    @GetMapping("/max-workload")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPPORT_AGENT')")
+    @Operation(summary = "Get max workload", description = "Returns value of the max workload.")
+    public ResponseEntity<ApiResponse<Integer>> getMaxWorkload() {
+        return ResponseEntity.ok(ApiResponse.success(messageUtil.get("success.user.list.fetched"), userService.getMaxWorkload()));
+    }
 }

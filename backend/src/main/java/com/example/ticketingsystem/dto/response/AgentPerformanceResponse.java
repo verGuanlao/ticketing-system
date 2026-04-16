@@ -13,5 +13,5 @@ public class AgentPerformanceResponse {
     private long resolvedTickets;
     private long closedTickets;
     private Double averageResolutionTimeHours;
-    private Integer workload;
+    private long workload;
 }

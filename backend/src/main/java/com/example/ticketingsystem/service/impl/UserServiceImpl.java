@@ -111,6 +111,11 @@ public class UserServiceImpl implements UserService {
     }
 
     // ── Agent workload / assignment helpers ──────────────────────────────────
+    @Override
+    @Transactional(readOnly = true)
+    public Integer getMaxWorkload() {
+        return maxAgentWorkload;
+    }
 
     /**
      * Finds the best available agent:

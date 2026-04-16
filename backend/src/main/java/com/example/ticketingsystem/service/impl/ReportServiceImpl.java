@@ -3,6 +3,7 @@ package com.example.ticketingsystem.service.impl;
 import com.example.ticketingsystem.component.MessageUtil;
 import com.example.ticketingsystem.dto.response.AgentPerformanceResponse;
 import com.example.ticketingsystem.dto.response.ReportResponse;
+import com.example.ticketingsystem.exception.AccessDeniedException;
 import com.example.ticketingsystem.model.Ticket;
 import com.example.ticketingsystem.model.User;
 import com.example.ticketingsystem.model.enums.Priority;
@@ -86,10 +87,15 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional(readOnly = true)
-    public AgentPerformanceResponse getAgentPerformanceById(Long agentId) {
+    public AgentPerformanceResponse getAgentPerformanceById(Long agentId, String email) {
         // validateUserIsAgent throws InvalidOperationException if not an agent
         userService.validateUserIsAgent(agentId);
+        User currentUser = userService.getUserEntityByEmail(email);
         User agent = userService.getUserEntityById(agentId);
+
+        if (currentUser.getRole() == Role.SUPPORT_AGENT && !currentUser.getId().equals(agent.getId())) {
+            throw new AccessDeniedException(messageUtil.get("error.report.access.denied"));
+        }
         return buildAgentPerformance(agent);
     }
 
@@ -114,6 +120,8 @@ public class ReportServiceImpl implements ReportService {
 
         Double avgHours = avgSeconds.isPresent() ? avgSeconds.getAsDouble() / 3600.0 : null;
 
+        long agentWorkload = ticketRepository.countActiveTicketsByAgent(agent.getId());
+
         return AgentPerformanceResponse.builder()
                 .agentId(agent.getId())
                 .agentName(agent.getFullName())
@@ -122,6 +130,7 @@ public class ReportServiceImpl implements ReportService {
                 .resolvedTickets(resolved)
                 .closedTickets(closed)
                 .averageResolutionTimeHours(avgHours)
+                .workload(agentWorkload)
                 .build();
     }
 }

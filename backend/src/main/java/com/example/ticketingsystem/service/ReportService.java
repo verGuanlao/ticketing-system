@@ -8,5 +8,5 @@ import java.util.List;
 public interface ReportService {
     ReportResponse getOverallReport();
     List<AgentPerformanceResponse> getAgentPerformanceReport();
-    AgentPerformanceResponse getAgentPerformanceById(Long agentId);
+    AgentPerformanceResponse getAgentPerformanceById(Long agentId, String email);
 }

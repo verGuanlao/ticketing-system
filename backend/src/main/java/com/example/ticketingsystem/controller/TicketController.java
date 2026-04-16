@@ -98,13 +98,14 @@ public class TicketController {
         return ResponseEntity.ok(ApiResponse.success(messageUtil.get("success.ticket.list.fetched"), tickets));
     }
 
-//    @GetMapping("/status/{status}")
-//    @PreAuthorize("hasAnyRole('ADMIN', 'SUPPORT_AGENT')")
-//    @Operation(summary = "Get tickets by status")
-//    public ResponseEntity<ApiResponse<List<TicketResponse>>> getTicketsByStatus(
-//            @PathVariable TicketStatus status) {
-//        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
-//    }
+    @GetMapping("/status/{status}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPPORT_AGENT')")
+    @Operation(summary = "Get tickets by status")
+    public ResponseEntity<ApiResponse<List<TicketResponse>>> getTicketsByStatus(
+            @PathVariable TicketStatus status) {
+        List<TicketResponse> tickets = ticketService.getTicketsByStatus(status);
+        return ResponseEntity.ok(ApiResponse.success(messageUtil.get("success.ticket.list.fetched"), tickets));
+    }
 
     @PutMapping("/{id}")
     @Operation(summary = "Update ticket",

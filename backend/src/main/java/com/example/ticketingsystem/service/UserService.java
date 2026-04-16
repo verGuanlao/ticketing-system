@@ -24,6 +24,7 @@ public interface UserService {
 
     // ── Agent workload / assignment helpers ──────────────────────────────────
 
+    Integer getMaxWorkload();
     Optional<User> findBestAvailableAgent();
     long getActiveTicketCountForAgent(Long agentId);
     boolean isAgentBelowMaxWorkload(Long agentId);
