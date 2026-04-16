@@ -19,10 +19,14 @@ export default function Register() {
     e.preventDefault();
     setIsSubmitting(true);
 
+    const cleanFirstName = firstName.trim();
+    const cleanLastName = lastName.trim();
+    const cleanEmail = email.trim();
+
     const response = await register({
-      firstName,
-      lastName,
-      email,
+      firstName: cleanFirstName,
+      lastName: cleanLastName,
+      email: cleanEmail,
       password,
     });
 

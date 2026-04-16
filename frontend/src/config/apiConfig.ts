@@ -31,7 +31,7 @@ export const API_URLS = {
   // Users
   USERS: `${API_BASE_URL}/api/users`,
   USER_ME: `${API_BASE_URL}/api/users/me`,
-  USER_MAX_WORKLOAD: '/users/max-workload',
+  USER_MAX_WORKLOAD: `${API_BASE_URL}/api/users/max-workload`,
   USER_BY_ID: (id: number | string) => `${API_BASE_URL}/api/users/${id}`,
   USER_BY_ROLE: (role: string) => `${API_BASE_URL}/api/users/role/${role}`,
 

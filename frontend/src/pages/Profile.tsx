@@ -155,7 +155,7 @@ export default function Profile() {
                   </div>
                   <div className="text-right">
                     <p className="text-xl font-black text-primary">
-                      {performance.averageResolutionTimeHours.toFixed(1)}h
+                      {(performance?.averageResolutionTimeHours ?? 0).toFixed(1)}h
                     </p>
                   </div>
                 </div>

@@ -17,6 +17,7 @@ import com.example.ticketingsystem.model.enums.Role;
 import com.example.ticketingsystem.model.enums.TicketStatus;
 import com.example.ticketingsystem.repository.TicketRepository;
 import com.example.ticketingsystem.service.CategoryService;
+import com.example.ticketingsystem.service.EmailService;
 import com.example.ticketingsystem.service.TicketService;
 import com.example.ticketingsystem.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +38,7 @@ public class TicketServiceImpl implements TicketService {
     private final TicketRepository ticketRepository;
     private final CategoryService categoryService;
     private final UserService userService;
-//    private final EmailService emailService;
+    private final EmailService emailService;
     private final MessageUtil messageUtil;
 
     // ─── Create ──────────────────────────────────────────────────────────────
@@ -66,7 +67,8 @@ public class TicketServiceImpl implements TicketService {
         ticket = attemptAutoAssign(ticket);
 //
         log.info("Ticket {} created by {} — status: {}", ticket.getId(), currentUserEmail, ticket.getStatus());
-////        emailService.sendTicketCreatedNotification(ticket);
+        emailService.sendTicketCreatedNotification(ticket.getId(), ticket.getCreatedBy().getFullName(),
+                ticket.getTitle(), ticket.getStatus(), ticket.getPriority(), ticket.getCreatedBy().getEmail());
         return EntityMapper.toTicketResponse(ticket);
     }
 
@@ -169,7 +171,8 @@ public class TicketServiceImpl implements TicketService {
         }
 
         ticketRepository.save(ticket);
-//        emailService.sendTicketUpdatedNotification(ticket);
+        emailService.sendTicketUpdatedNotification(ticket.getId(), ticket.getCreatedBy().getFullName(), ticket.getTitle(),
+                ticket.getStatus(), ticket.getCreatedBy().getEmail());
         log.info("Ticket {} updated by {}", id, currentUserEmail);
         return EntityMapper.toTicketResponse(ticket);
     }
@@ -200,7 +203,7 @@ public class TicketServiceImpl implements TicketService {
         ticket.setAssignedAgent(agent);
         ticketRepository.save(ticket);
 
-//        emailService.sendTicketAssignedNotification(ticket);
+        sendAssignedNotification(ticket);
         log.info("Ticket {} manually assigned to agent {} by {}", ticketId, agent.getId(), currentUserEmail);
         return EntityMapper.toTicketResponse(ticket);
     }
@@ -221,7 +224,7 @@ public class TicketServiceImpl implements TicketService {
             log.warn("Admin auto-assign for ticket {} failed — all agents at capacity", ticketId);
             throw new NoAgentAvailableException(messageUtil.get("error.ticket.no.agent.available"));
         } else {
-//            emailService.sendTicketAssignedNotification(ticket);
+            sendAssignedNotification(ticket);
             log.info("Ticket {} auto-assigned by {}", ticketId, currentUserEmail);
         }
 
@@ -264,7 +267,7 @@ public class TicketServiceImpl implements TicketService {
         ticket.setStatus(TicketStatus.OPEN);
         ticketRepository.save(ticket);
 
-//        emailService.sendTicketAssignedNotification(ticket);
+        sendAssignedNotification(ticket);
         log.info("Ticket {} reassigned to agent {} via client request by {}",
                 ticketId, bestAgent.get().getId(), currentUserEmail);
         return EntityMapper.toTicketResponse(ticket);
@@ -310,7 +313,8 @@ public class TicketServiceImpl implements TicketService {
 
         ticket.setStatus(status);
         ticketRepository.save(ticket);
-//        emailService.sendTicketStatusUpdatedNotification(ticket);
+        emailService.sendTicketStatusUpdatedNotification(ticket.getId(), ticket.getStatus(), ticket.getTitle(),
+                ticket.getCreatedBy().getFullName(), ticket.getCreatedBy().getEmail());
         log.info("Ticket {} status updated to {} by {}", id, status, currentUserEmail);
         return EntityMapper.toTicketResponse(ticket);
     }
@@ -383,6 +387,11 @@ public class TicketServiceImpl implements TicketService {
             throw new InvalidOperationException(
                     messageUtil.get("error.ticket.invalid.status.transition", from, to));
         }
+    }
+
+    private void sendAssignedNotification(Ticket ticket) {
+        emailService.sendTicketAssignedNotification(ticket.getId(), ticket.getAssignedAgent().getFullName(), ticket.getTitle(),
+                ticket.getPriority(), ticket.getCreatedBy().getFullName(), ticket.getAssignedAgent().getEmail(), ticket.getCreatedBy().getEmail());
     }
 
     @Override

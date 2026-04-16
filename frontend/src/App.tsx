@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import Login from './pages/Login';
+import { Toaster } from './components/ui/sonner';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import TicketList from './pages/TicketList';
@@ -95,6 +96,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+      <Toaster position="top-right" />
     </Router>
   );
 }

@@ -13,6 +13,7 @@ import com.example.ticketingsystem.model.User;
 import com.example.ticketingsystem.model.enums.Role;
 import com.example.ticketingsystem.model.enums.TicketStatus;
 import com.example.ticketingsystem.repository.MessageRepository;
+import com.example.ticketingsystem.service.EmailService;
 import com.example.ticketingsystem.service.MessageService;
 import com.example.ticketingsystem.service.TicketService;
 import com.example.ticketingsystem.service.UserService;
@@ -32,7 +33,7 @@ public class MessageServiceImpl implements MessageService {
     private final MessageRepository messageRepository;
     private final TicketService ticketService;
     private final UserService userService;
-//    private final EmailService emailService;
+    private final EmailService emailService;
     private final MessageUtil messageUtil;
 
     /**
@@ -45,12 +46,12 @@ public class MessageServiceImpl implements MessageService {
             MessageRepository messageRepository,
             @Lazy TicketService ticketService,
             UserService userService,
-//            EmailService emailService,
+            EmailService emailService,
             MessageUtil messageUtil) {
         this.messageRepository = messageRepository;
         this.ticketService     = ticketService;
         this.userService       = userService;
-//        this.emailService      = emailService;
+        this.emailService      = emailService;
         this.messageUtil       = messageUtil;
     }
 
@@ -87,7 +88,21 @@ public class MessageServiceImpl implements MessageService {
                 .build();
 
         messageRepository.save(message);
-//        emailService.sendNewMessageNotification(ticket, sender, message.getText());
+
+        // Notify the other party (if sender is client → notify agent; if agent → notify client)
+        String recipientEmail;
+        String recipientName;
+        if (ticket.getAssignedAgent() != null
+                && !ticket.getAssignedAgent().getId().equals(sender.getId())) {
+            recipientEmail = ticket.getAssignedAgent().getEmail();
+            recipientName  = ticket.getAssignedAgent().getFullName();
+        } else {
+            recipientEmail = ticket.getCreatedBy().getEmail();
+            recipientName  = ticket.getCreatedBy().getFullName();
+        }
+
+        emailService.sendNewMessageNotification(recipientName, recipientEmail, ticket.getId(),
+                ticket.getTitle(), sender.getFullName(), message.getText());
         log.info("Message added to ticket {} by {}", ticketId, currentUserEmail);
         return EntityMapper.toMessageResponse(message);
     }

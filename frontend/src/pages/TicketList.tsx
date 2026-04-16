@@ -614,62 +614,65 @@ export default function TicketList() {
                           </>
                         )}
 
-                        {role === 'ADMIN' &&
-                          (ticket.status === 'OPEN' ||
-                            ticket.status === 'PENDING' ||
-                            ticket.status === 'IN_PROGRESS') && (
-                            <>
-                              <DropdownMenuItem onClick={() => handleAutoAssign(ticket.id)}>
-                                <Sparkles className="mr-2 h-4 w-4 text-primary" /> Auto Assign
-                              </DropdownMenuItem>
-                              <DropdownMenuSub>
-                                <DropdownMenuSubTrigger>
-                                  <UserPlus className="mr-2 h-4 w-4" /> Reassign Agent
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuSubContent className="w-[200px] p-0" align="end">
-                                  <Command>
-                                    <CommandInput placeholder="Search agents..." autoFocus />
-                                    <CommandList>
-                                      <CommandEmpty>No agents found.</CommandEmpty>
-                                      <CommandGroup>
-                                        {agents.map((agent) => (
-                                          <CommandItem
-                                            key={agent.id}
-                                            onSelect={() => handleReassign(ticket.id, agent.id)}
-                                            className="flex items-center gap-2"
-                                          >
-                                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold">
-                                              {agent.firstName[0]}
-                                            </div>
-                                            <span className="text-xs font-medium">
-                                              {agent.firstName} {agent.lastName}
-                                            </span>
-                                            <Check
-                                              className={cn(
-                                                'ml-auto h-4 w-4',
-                                                ticket.assignedAgent === agent.fullName
-                                                  ? 'opacity-100'
-                                                  : 'opacity-0'
-                                              )}
-                                            />
-                                          </CommandItem>
-                                        ))}
-                                      </CommandGroup>
-                                    </CommandList>
-                                  </Command>
-                                </DropdownMenuSubContent>
-                              </DropdownMenuSub>
-
-                              {ticket.status === 'CLOSED' && (
-                                <DropdownMenuItem
-                                  className="text-rose-600"
-                                  onClick={() => handleDelete(ticket.id)}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" /> Delete Ticket
+                        {role === 'ADMIN' && (
+                          <>
+                            {(ticket.status === 'OPEN' ||
+                              ticket.status === 'PENDING' ||
+                              ticket.status === 'IN_PROGRESS') && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleAutoAssign(ticket.id)}>
+                                  <Sparkles className="mr-2 h-4 w-4 text-primary" /> Auto Assign
                                 </DropdownMenuItem>
-                              )}
-                            </>
-                          )}
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>
+                                    <UserPlus className="mr-2 h-4 w-4" /> Reassign Agent
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent className="w-[200px] p-0" align="end">
+                                    {/* Add the onKeyDown handler here */}
+                                    <Command onKeyDown={(e) => e.stopPropagation()}>
+                                      <CommandInput placeholder="Search agents..." autoFocus />
+                                      <CommandList>
+                                        <CommandEmpty>No agents found.</CommandEmpty>
+                                        <CommandGroup>
+                                          {agents.map((agent) => (
+                                            <CommandItem
+                                              key={agent.id}
+                                              onSelect={() => handleReassign(ticket.id, agent.id)}
+                                              className="flex items-center gap-2"
+                                            >
+                                              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold">
+                                                {agent.firstName[0]}
+                                              </div>
+                                              <span className="text-xs font-medium">
+                                                {agent.firstName} {agent.lastName}
+                                              </span>
+                                              <Check
+                                                className={cn(
+                                                  'ml-auto h-4 w-4',
+                                                  ticket.assignedAgent === agent.fullName
+                                                    ? 'opacity-100'
+                                                    : 'opacity-0'
+                                                )}
+                                              />
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      </CommandList>
+                                    </Command>
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              </>
+                            )}
+                            {ticket.status === 'CLOSED' && (
+                              <DropdownMenuItem
+                                className="text-rose-600"
+                                onClick={() => handleDelete(ticket.id)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Ticket
+                              </DropdownMenuItem>
+                            )}
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

@@ -101,7 +101,7 @@ export default function NewTicket() {
     const res = isEditing ? await updateTicket(Number(id), payload) : await createTicket(payload);
 
     if (res.success) {
-      toast.success(isEditing ? 'Incident updated' : 'Incident initialized');
+      toast.success(res.message);
       navigate('/tickets');
     } else {
       toast.error(res.message || 'Operation failed');

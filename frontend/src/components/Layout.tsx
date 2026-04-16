@@ -3,7 +3,6 @@ import { Outlet, Navigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopNav } from './TopNav';
 import { UIProvider, useUI } from '../contexts/UIContext';
-import { Toaster } from './ui/sonner';
 import { cn } from '../lib/utils.ts';
 
 const LayoutContent = () => {
@@ -23,7 +22,6 @@ const LayoutContent = () => {
           <Outlet />
         </main>
       </div>
-      <Toaster position="top-right" />
     </div>
   );
 };

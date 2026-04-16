@@ -114,7 +114,7 @@ export default function Agents() {
           item.agent.id === userId ? { ...item, agent: { ...item.agent, status: newStatus } } : item
         )
       );
-      toast.success(`Status updated to ${newStatus}`);
+      toast.success(res.message);
     } else {
       toast.error(res.message);
     }
@@ -124,7 +124,7 @@ export default function Agents() {
     const res = await deleteUser(userId);
     if (res.success) {
       setAgents((prev) => prev.filter((item) => item.agent.id !== userId));
-      toast.success('Personnel purged');
+      toast.success(res.message);
     } else {
       toast.error(res.message);
     }

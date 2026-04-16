@@ -626,15 +626,6 @@ export default function TicketDetail() {
                     </p>
                   </div>
                 )}
-
-                {role === 'ADMIN' && (
-                  <Button
-                    variant="outline"
-                    className="h-10 w-full border-slate-200 font-bold text-slate-600 hover:bg-slate-50"
-                  >
-                    Transfer Case
-                  </Button>
-                )}
               </div>
             </CardContent>
           </Card>
