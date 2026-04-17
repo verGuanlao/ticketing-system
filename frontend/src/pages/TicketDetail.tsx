@@ -140,7 +140,7 @@ export default function TicketDetail() {
 
     if (res?.success) {
       setMessages((prev) => prev.filter((m) => m.id !== messageId));
-      toast.success('Message deleted');
+      toast.success(res.message);
     } else {
       toast.error(res?.message || 'Failed to delete message');
     }
@@ -177,7 +177,7 @@ export default function TicketDetail() {
 
     if (res?.success) {
       setTicket((prev) => (prev ? { ...prev, status } : null));
-      toast.success(`Status updated to ${status.replace('_', ' ')}`);
+      toast.success(res.message);
     } else {
       toast.error(res?.message);
     }
