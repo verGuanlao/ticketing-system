@@ -27,8 +27,8 @@ export default function Profile() {
           const currentUser = userRes.data;
           setUser(currentUser);
 
-          // Only fetch performance and workload if the user is an Agent or Admin
-          if (currentUser.role === 'SUPPORT_AGENT' || currentUser.role === 'ADMIN') {
+          // Only fetch performance and workload if the user is an Agent
+          if (currentUser.role === 'SUPPORT_AGENT') {
             const [perfRes, workloadRes] = await Promise.all([
               getAgentPerformanceById(currentUser.id),
               getMaxWorkload(),

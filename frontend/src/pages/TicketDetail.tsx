@@ -129,7 +129,6 @@ export default function TicketDetail() {
     if (res?.success) {
       setMessages((prev) => [...prev, res.data]); // Optimistic update
       setMessageText('');
-      toast.success(res.message);
     } else {
       toast.error(res?.message || 'Failed to send message');
     }
