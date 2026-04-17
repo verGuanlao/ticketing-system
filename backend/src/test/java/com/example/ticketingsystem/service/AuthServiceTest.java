@@ -3,6 +3,7 @@ package com.example.ticketingsystem.service;
 import com.example.ticketingsystem.dto.request.LoginRequest;
 import com.example.ticketingsystem.dto.request.RegisterRequest;
 import com.example.ticketingsystem.dto.response.AuthResponse;
+import com.example.ticketingsystem.exception.UnauthorizedException;
 import com.example.ticketingsystem.model.User;
 import com.example.ticketingsystem.model.enums.Role;
 import com.example.ticketingsystem.model.enums.Status;
@@ -122,4 +123,18 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.login(loginRequest))
                 .isInstanceOf(BadCredentialsException.class);
     }
+
+    @Test
+    @DisplayName("login - throws Unauthorized exception when user is inactive")
+    void login_throwsUnauthorized_onInactive() {
+        when(authenticationManager.authenticate(any())).thenReturn(
+                new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
+        when(messageUtil.get("error.user.inactive"))
+                .thenReturn("User is not active.");
+        mockUser.setStatus(Status.INACTIVE);
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(mockUser));
+        assertThatThrownBy(() -> authService.login(loginRequest))
+                .isInstanceOf(UnauthorizedException.class);
+    }
+
 }

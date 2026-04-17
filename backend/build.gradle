@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
 plugins {
 	id 'java'
 	id 'war'
@@ -46,4 +48,22 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+tasks.test {
+	useJUnitPlatform()
+	testLogging {
+		events = [TestLogEvent.PASSED, TestLogEvent.FAILED]
+		showExceptions = true
+		showStackTraces = true
+		showStandardStreams = false
+	}
+	outputs.upToDateWhen { false }
+	// Print summary after all tests
+	afterSuite { desc, result ->
+		if (!desc.parent) { // will only print once, at the end
+			println "\nTest summary: ${result.resultType}"
+			println "Tests run: ${result.testCount}, Passed: ${result.successfulTestCount}, Failed: ${result.failedTestCount}, Skipped: ${result.skippedTestCount}"
+		}
+	}
 }
